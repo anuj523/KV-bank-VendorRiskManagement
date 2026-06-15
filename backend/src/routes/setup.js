@@ -36,3 +36,17 @@ router.get('/status', async (req, res) => {
 });
 
 module.exports = router;
+
+// Reset admin password - call this if login fails
+router.post('/reset-admin', async (req, res) => {
+  try {
+    const hash = await require('bcryptjs').hash('Admin@123', 10);
+    await query(
+      `UPDATE users SET password_hash = $1 WHERE email = $2`,
+      [hash, 'admin@kvbank.com']
+    );
+    res.json({ message: 'Admin password reset to Admin@123', email: 'admin@kvbank.com' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
