@@ -114,6 +114,21 @@ function DocumentsTab({ vendor, onRefresh }) {
 
   const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+  const viewFile = async (doc) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${BASE_URL}${doc.file_path}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('File not accessible');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (err) {
+      alert('Could not open file: ' + err.message);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -282,11 +297,11 @@ function DocumentsTab({ vendor, onRefresh }) {
                         : <Sparkles size={11} />}
                       AI
                     </button>
-                    <a href={`${BASE_URL}${d.file_path}`}
-                      target="_blank" rel="noreferrer"
+                    <button
+                      onClick={() => viewFile(d)}
                       className="text-xs py-1 px-2 rounded-lg border border-white/15 text-white/60 hover:text-white transition-all flex items-center gap-1">
                       <Eye size={11} /> View
-                    </a>
+                    </button>
                   </div>
                 </td>
               </tr>
