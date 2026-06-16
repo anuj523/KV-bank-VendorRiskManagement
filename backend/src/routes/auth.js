@@ -89,3 +89,26 @@ router.get('/users', auth, async (req, res) => {
 });
 
 module.exports = router;
+
+// Create vendor portal user (admin/VMO only)
+router.post('/vendor-user', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { query } = require('../db');
+    const { vendor_id, email, full_name, password } = req.body;
+    if (!vendor_id || !email || !password) return res.status(400).json({ error: 'vendor_id, email and password required' });
+    const bcrypt = require('bcryptjs');
+    const hash = await bcrypt.hash(password, 10);
+    const result = await query(
+      `INSERT INTO vendor_users (vendor_id, email, password_hash, full_name) VALUES ($1,$2,$3,$4) RETURNING id, email, full_name, vendor_id, created_at`,
+      [vendor_id, email.toLowerCase(), hash, full_name || email]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Email already exists' });
+    res.status(500).json({ error: err.message });
+  }
+});

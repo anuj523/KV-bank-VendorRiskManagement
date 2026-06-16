@@ -327,6 +327,50 @@ function DocumentsTab({ vendor, onRefresh }) {
   );
 }
 
+function CreatePortalUser({ vendorId, vendorName }) {
+  const [show, setShow] = useState(false);
+  const [form, setForm] = useState({ email: '', full_name: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setLoading(true); setError(''); setSuccess('');
+    try {
+      await api.post('/auth/vendor-user', { ...form, vendor_id: vendorId });
+      setSuccess(`Portal login created! Email: ${form.email} / Password: ${form.password}`);
+      setForm({ email: '', full_name: '', password: '' });
+    } catch (err) {
+      setError(err.message);
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="mt-4">
+      <button onClick={() => setShow(!show)} className="btn-glass text-sm flex items-center gap-2">
+        🔑 {show ? 'Cancel' : 'Create Vendor Portal Login'}
+      </button>
+      {show && (
+        <form onSubmit={handleCreate} className="mt-3 p-4 rounded-xl space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Create login credentials for {vendorName} to access the Vendor Portal</p>
+          <input className="glass-input" placeholder="Vendor contact email" value={form.email}
+            onChange={e => setForm(p => ({ ...p, email: e.target.value }))} required type="email" />
+          <input className="glass-input" placeholder="Contact person name" value={form.full_name}
+            onChange={e => setForm(p => ({ ...p, full_name: e.target.value }))} />
+          <input className="glass-input" placeholder="Set a password" value={form.password}
+            onChange={e => setForm(p => ({ ...p, password: e.target.value }))} required type="text" />
+          {error && <div className="text-xs" style={{ color: '#f87171' }}>{error}</div>}
+          {success && <div className="text-xs p-2 rounded-lg" style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80' }}>{success}</div>}
+          <button type="submit" disabled={loading} className="btn-primary text-sm">
+            {loading ? 'Creating...' : 'Create Login'}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export default function VendorDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -449,6 +493,7 @@ export default function VendorDetail() {
               </div>
             ) : null)}
             {vendor.service_description && <p className="text-sm pt-2" style={{ color: 'var(--text-secondary)' }}>{vendor.service_description}</p>}
+            <CreatePortalUser vendorId={vendor.id} vendorName={vendor.name} />
           </div>
           <div className="glass-card-flat p-6 space-y-3">
             <h3 className="font-display font-semibold text-white">Contract & Risk</h3>
