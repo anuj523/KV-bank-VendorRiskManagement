@@ -327,6 +327,183 @@ function DocumentsTab({ vendor, onRefresh }) {
   );
 }
 
+function OverviewTab({ vendor, score, onRefresh }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    contact_person: vendor.contact_person || '',
+    email: vendor.email || '',
+    contact_phone: vendor.contact_phone || '',
+    incorporation_country: vendor.incorporation_country || '',
+    employee_count: vendor.employee_count || '',
+    years_in_operation: vendor.years_in_operation || '',
+    annual_revenue: vendor.annual_revenue || '',
+    service_description: vendor.service_description || '',
+    description: vendor.description || '',
+    category: vendor.category || '',
+    criticality: vendor.criticality || '',
+    health_status: vendor.health_status || 'green',
+    contract_start_date: vendor.contract_start_date ? vendor.contract_start_date.split('T')[0] : '',
+    contract_end_date: vendor.contract_end_date ? vendor.contract_end_date.split('T')[0] : '',
+    contract_value: vendor.contract_value || '',
+    auto_renewal: vendor.auto_renewal || false,
+  });
+
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.put(`/vendors/${vendor.id}`, form);
+      setEditing(false);
+      onRefresh();
+    } catch (err) {
+      alert('Save failed: ' + err.message);
+    } finally { setSaving(false); }
+  };
+
+  const Field = ({ label, field, type = 'text', options }) => (
+    <div className="flex items-start justify-between py-2.5 border-b border-white/5 gap-4">
+      <span className="text-sm flex-shrink-0 mt-0.5" style={{ color: 'var(--text-muted)', minWidth: 140 }}>{label}</span>
+      {editing ? (
+        options ? (
+          <select className="glass-input text-sm py-1 px-2 flex-1" value={form[field]} onChange={e => set(field, e.target.value)}>
+            <option value="">— select —</option>
+            {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        ) : type === 'checkbox' ? (
+          <input type="checkbox" checked={form[field]} onChange={e => set(field, e.target.checked)} className="w-4 h-4 accent-sky-500 mt-1" />
+        ) : (
+          <input type={type} className="glass-input text-sm py-1 px-2 flex-1" value={form[field]} onChange={e => set(field, e.target.value)} placeholder={`Enter ${label.toLowerCase()}`} />
+        )
+      ) : (
+        <span className="text-sm text-white font-medium text-right" style={{ color: form[field] || vendor[field] ? 'white' : 'var(--text-muted)' }}>
+          {field === 'auto_renewal' ? (vendor.auto_renewal ? 'Yes' : 'No')
+            : field === 'contract_value' && vendor.contract_value ? `₹${Number(vendor.contract_value).toLocaleString('en-IN')}`
+            : field === 'contract_start_date' || field === 'contract_end_date' ? (vendor[field] ? new Date(vendor[field]).toLocaleDateString('en-IN') : '—')
+            : field === 'category' ? (vendor.category?.replace(/_/g, ' ') || '—')
+            : vendor[field] || '—'}
+        </span>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Vendor Details Card */}
+        <div className="glass-card-flat p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-display font-semibold text-white">Vendor Details</h3>
+            {!editing ? (
+              <button onClick={() => setEditing(true)} className="btn-glass text-xs py-1.5 px-3 flex items-center gap-1.5">
+                ✏️ Edit
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button onClick={handleSave} disabled={saving} className="btn-primary text-xs py-1.5 px-3">
+                  {saving ? 'Saving...' : '✓ Save'}
+                </button>
+                <button onClick={() => setEditing(false)} className="btn-glass text-xs py-1.5 px-3">Cancel</button>
+              </div>
+            )}
+          </div>
+
+          <Field label="Contact Person" field="contact_person" />
+          <Field label="Email" field="email" type="email" />
+          <Field label="Phone" field="contact_phone" />
+          <Field label="Country" field="incorporation_country" />
+          <Field label="Employees" field="employee_count" type="number" />
+          <Field label="Years Operating" field="years_in_operation" type="number" />
+          <Field label="Annual Revenue (₹)" field="annual_revenue" type="number" />
+          <Field label="Category" field="category" options={[
+            ['technology_cloud','Technology & Cloud'],
+            ['it_products_software','IT Products & Software'],
+            ['financial_fintech','Financial & Fintech'],
+            ['outsourcing_data','Outsourcing & Data'],
+            ['professional_services','Professional Services'],
+            ['facilities_operations','Facilities & Operations'],
+          ]} />
+          <Field label="Criticality" field="criticality" options={[['high','High'],['medium','Medium'],['low','Low']]} />
+          <Field label="Health Status" field="health_status" options={[['green','Green ✅'],['amber','Amber ⚠️'],['red','Red 🔴']]} />
+
+          {editing ? (
+            <div className="mt-3">
+              <label className="block text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>Service Description</label>
+              <textarea className="glass-input resize-none h-20 text-sm" value={form.service_description}
+                onChange={e => set('service_description', e.target.value)} placeholder="Describe services provided to KVB..." />
+            </div>
+          ) : (
+            <div className="mt-3 pt-2">
+              <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Service Description</div>
+              <p className="text-sm" style={{ color: vendor.service_description ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+                {vendor.service_description || '—'}
+              </p>
+            </div>
+          )}
+
+          <CreatePortalUser vendorId={vendor.id} vendorName={vendor.name} />
+        </div>
+
+        {/* Contract & Risk Card */}
+        <div className="glass-card-flat p-6">
+          <h3 className="font-display font-semibold text-white mb-4">Contract & Risk</h3>
+
+          {score ? (
+            <div className="p-4 rounded-xl mb-4" style={{ background: 'rgba(74,159,212,0.08)', border: '1px solid rgba(74,159,212,0.15)' }}>
+              <div className="text-4xl font-bold font-display" style={{ color: score.overall_score >= 80 ? '#4ade80' : score.overall_score >= 50 ? '#fbbf24' : '#f87171' }}>
+                {score.overall_score}%
+              </div>
+              <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Overall risk score · {score.risk_rating} risk</div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-xl mb-4 text-sm" style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)' }}>
+              No risk score yet — complete the questionnaire
+            </div>
+          )}
+
+          <Field label="Contract Start" field="contract_start_date" type="date" />
+          <Field label="Contract End" field="contract_end_date" type="date" />
+          <Field label="Contract Value (₹)" field="contract_value" type="number" />
+          <Field label="Auto Renewal" field="auto_renewal" type="checkbox" />
+          <div className="flex items-start justify-between py-2.5 border-b border-white/5">
+            <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 140 }}>Owner</span>
+            <span className="text-sm text-white font-medium">{vendor.owner_name || '—'}</span>
+          </div>
+          <div className="flex items-start justify-between py-2.5 border-b border-white/5">
+            <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 140 }}>Status</span>
+            <span className="badge badge-blue">{vendor.status?.replace(/_/g, ' ')}</span>
+          </div>
+          <div className="flex items-start justify-between py-2.5 border-b border-white/5">
+            <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 140 }}>Added On</span>
+            <span className="text-sm text-white">{new Date(vendor.created_at).toLocaleDateString('en-IN')}</span>
+          </div>
+          <div className="flex items-start justify-between py-2.5">
+            <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 140 }}>Last Updated</span>
+            <span className="text-sm text-white">{new Date(vendor.updated_at).toLocaleDateString('en-IN')}</span>
+          </div>
+
+          {vendor.subcontractors?.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <div className="text-xs mb-2 font-medium" style={{ color: 'var(--text-muted)' }}>SUB-CONTRACTORS ({vendor.subcontractors.length})</div>
+              {vendor.subcontractors.map(s => (
+                <div key={s.id} className="flex items-center justify-between py-1.5">
+                  <span className="text-sm text-white">{s.name}</span>
+                  <div className="flex gap-2">
+                    <span className="badge badge-gray">{s.geography}</span>
+                    {s.has_kvb_data_access && <span className="badge badge-amber">Data Access</span>}
+                    {s.data_outside_india && <span className="badge badge-red">Outside India</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CreatePortalUser({ vendorId, vendorName }) {
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ email: '', full_name: '', password: '' });
@@ -483,34 +660,7 @@ export default function VendorDetail() {
       </div>
 
       {activeTab === 'overview' && (
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="glass-card-flat p-6 space-y-3">
-            <h3 className="font-display font-semibold text-white">Vendor Details</h3>
-            {[['Contact Person',vendor.contact_person],['Email',vendor.email],['Phone',vendor.contact_phone],['Country',vendor.incorporation_country],['Employees',vendor.employee_count],['Years Operating',vendor.years_in_operation]].map(([l,v]) => v ? (
-              <div key={l} className="flex justify-between py-2 border-b border-white/5">
-                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{l}</span>
-                <span className="text-sm text-white font-medium">{v}</span>
-              </div>
-            ) : null)}
-            {vendor.service_description && <p className="text-sm pt-2" style={{ color: 'var(--text-secondary)' }}>{vendor.service_description}</p>}
-            <CreatePortalUser vendorId={vendor.id} vendorName={vendor.name} />
-          </div>
-          <div className="glass-card-flat p-6 space-y-3">
-            <h3 className="font-display font-semibold text-white">Contract & Risk</h3>
-            {score && (
-              <div className="p-4 rounded-xl mb-2" style={{ background: 'rgba(74,159,212,0.08)', border: '1px solid rgba(74,159,212,0.15)' }}>
-                <div className="text-4xl font-bold font-display" style={{ color: score.overall_score >= 80 ? '#4ade80' : score.overall_score >= 50 ? '#fbbf24' : '#f87171' }}>{score.overall_score}%</div>
-                <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Overall · {score.risk_rating} risk</div>
-              </div>
-            )}
-            {[['Contract Start',vendor.contract_start_date?new Date(vendor.contract_start_date).toLocaleDateString('en-IN'):null],['Contract End',vendor.contract_end_date?new Date(vendor.contract_end_date).toLocaleDateString('en-IN'):null],['Contract Value',vendor.contract_value?`₹${Number(vendor.contract_value).toLocaleString('en-IN')}`:null],['Auto Renewal',vendor.auto_renewal?'Yes':'No'],['Owner',vendor.owner_name]].map(([l,v]) => v ? (
-              <div key={l} className="flex justify-between py-2 border-b border-white/5">
-                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{l}</span>
-                <span className="text-sm text-white font-medium">{v}</span>
-              </div>
-            ) : null)}
-          </div>
-        </div>
+        <OverviewTab vendor={vendor} score={score} onRefresh={loadVendor} />
       )}
 
       {activeTab === 'risk' && (
