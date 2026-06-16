@@ -339,7 +339,6 @@ function OverviewTab({ vendor, score, onRefresh }) {
     years_in_operation: vendor.years_in_operation || '',
     annual_revenue: vendor.annual_revenue || '',
     service_description: vendor.service_description || '',
-    description: vendor.description || '',
     category: vendor.category || '',
     criticality: vendor.criticality || '',
     health_status: vendor.health_status || 'green',
@@ -348,8 +347,6 @@ function OverviewTab({ vendor, score, onRefresh }) {
     contract_value: vendor.contract_value || '',
     auto_renewal: vendor.auto_renewal || false,
   });
-
-  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const handleSave = async () => {
     setSaving(true);
@@ -362,143 +359,179 @@ function OverviewTab({ vendor, score, onRefresh }) {
     } finally { setSaving(false); }
   };
 
-  const Field = ({ label, field, type = 'text', options }) => (
+  const displayVal = (field) => {
+    if (field === 'auto_renewal') return vendor.auto_renewal ? 'Yes' : 'No';
+    if (field === 'contract_value') return vendor.contract_value ? `₹${Number(vendor.contract_value).toLocaleString('en-IN')}` : '—';
+    if (field === 'contract_start_date' || field === 'contract_end_date') return vendor[field] ? new Date(vendor[field]).toLocaleDateString('en-IN') : '—';
+    if (field === 'category') return vendor.category ? vendor.category.replace(/_/g, ' ') : '—';
+    return vendor[field] || '—';
+  };
+
+  const Row = ({ label, field, children }) => (
     <div className="flex items-start justify-between py-2.5 border-b border-white/5 gap-4">
-      <span className="text-sm flex-shrink-0 mt-0.5" style={{ color: 'var(--text-muted)', minWidth: 140 }}>{label}</span>
-      {editing ? (
-        options ? (
-          <select className="glass-input text-sm py-1 px-2 flex-1" value={form[field]} onChange={e => set(field, e.target.value)}>
-            <option value="">— select —</option>
-            {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-        ) : type === 'checkbox' ? (
-          <input type="checkbox" checked={form[field]} onChange={e => set(field, e.target.checked)} className="w-4 h-4 accent-sky-500 mt-1" />
-        ) : (
-          <input type={type} className="glass-input text-sm py-1 px-2 flex-1" value={form[field]} onChange={e => set(field, e.target.value)} placeholder={`Enter ${label.toLowerCase()}`} />
-        )
-      ) : (
-        <span className="text-sm text-white font-medium text-right" style={{ color: form[field] || vendor[field] ? 'white' : 'var(--text-muted)' }}>
-          {field === 'auto_renewal' ? (vendor.auto_renewal ? 'Yes' : 'No')
-            : field === 'contract_value' && vendor.contract_value ? `₹${Number(vendor.contract_value).toLocaleString('en-IN')}`
-            : field === 'contract_start_date' || field === 'contract_end_date' ? (vendor[field] ? new Date(vendor[field]).toLocaleDateString('en-IN') : '—')
-            : field === 'category' ? (vendor.category?.replace(/_/g, ' ') || '—')
-            : vendor[field] || '—'}
-        </span>
+      <span className="text-sm flex-shrink-0" style={{ color: 'var(--text-muted)', minWidth: 150 }}>{label}</span>
+      {editing ? children : (
+        <span className="text-sm text-white font-medium text-right">{displayVal(field)}</span>
       )}
     </div>
   );
 
   return (
-    <div className="space-y-4">
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* Vendor Details Card */}
-        <div className="glass-card-flat p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display font-semibold text-white">Vendor Details</h3>
-            {!editing ? (
-              <button onClick={() => setEditing(true)} className="btn-glass text-xs py-1.5 px-3 flex items-center gap-1.5">
-                ✏️ Edit
-              </button>
-            ) : (
-              <div className="flex gap-2">
-                <button onClick={handleSave} disabled={saving} className="btn-primary text-xs py-1.5 px-3">
-                  {saving ? 'Saving...' : '✓ Save'}
-                </button>
-                <button onClick={() => setEditing(false)} className="btn-glass text-xs py-1.5 px-3">Cancel</button>
-              </div>
-            )}
-          </div>
+    <div className="grid md:grid-cols-2 gap-4">
+      {/* Vendor Details Card */}
+      <div className="glass-card-flat p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display font-semibold text-white">Vendor Details</h3>
+          {!editing ? (
+            <button onClick={() => setEditing(true)} className="btn-glass text-xs py-1.5 px-3">✏️ Edit</button>
+          ) : (
+            <div className="flex gap-2">
+              <button onClick={handleSave} disabled={saving} className="btn-primary text-xs py-1.5 px-3">{saving ? 'Saving...' : '✓ Save'}</button>
+              <button onClick={() => setEditing(false)} className="btn-glass text-xs py-1.5 px-3">Cancel</button>
+            </div>
+          )}
+        </div>
 
-          <Field label="Contact Person" field="contact_person" />
-          <Field label="Email" field="email" type="email" />
-          <Field label="Phone" field="contact_phone" />
-          <Field label="Country" field="incorporation_country" />
-          <Field label="Employees" field="employee_count" type="number" />
-          <Field label="Years Operating" field="years_in_operation" type="number" />
-          <Field label="Annual Revenue (₹)" field="annual_revenue" type="number" />
-          <Field label="Category" field="category" options={[
-            ['technology_cloud','Technology & Cloud'],
-            ['it_products_software','IT Products & Software'],
-            ['financial_fintech','Financial & Fintech'],
-            ['outsourcing_data','Outsourcing & Data'],
-            ['professional_services','Professional Services'],
-            ['facilities_operations','Facilities & Operations'],
-          ]} />
-          <Field label="Criticality" field="criticality" options={[['high','High'],['medium','Medium'],['low','Low']]} />
-          <Field label="Health Status" field="health_status" options={[['green','Green ✅'],['amber','Amber ⚠️'],['red','Red 🔴']]} />
+        <Row label="Contact Person" field="contact_person">
+          <input className="glass-input text-sm py-1 px-2 flex-1" value={form.contact_person}
+            onChange={e => setForm(p => ({ ...p, contact_person: e.target.value }))} placeholder="Enter name" />
+        </Row>
+        <Row label="Email" field="email">
+          <input className="glass-input text-sm py-1 px-2 flex-1" type="email" value={form.email}
+            onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="Enter email" />
+        </Row>
+        <Row label="Phone" field="contact_phone">
+          <input className="glass-input text-sm py-1 px-2 flex-1" value={form.contact_phone}
+            onChange={e => setForm(p => ({ ...p, contact_phone: e.target.value }))} placeholder="Enter phone" />
+        </Row>
+        <Row label="Country" field="incorporation_country">
+          <input className="glass-input text-sm py-1 px-2 flex-1" value={form.incorporation_country}
+            onChange={e => setForm(p => ({ ...p, incorporation_country: e.target.value }))} placeholder="Enter country" />
+        </Row>
+        <Row label="Employees" field="employee_count">
+          <input className="glass-input text-sm py-1 px-2 flex-1" type="number" value={form.employee_count}
+            onChange={e => setForm(p => ({ ...p, employee_count: e.target.value }))} placeholder="Number of employees" />
+        </Row>
+        <Row label="Years Operating" field="years_in_operation">
+          <input className="glass-input text-sm py-1 px-2 flex-1" type="number" value={form.years_in_operation}
+            onChange={e => setForm(p => ({ ...p, years_in_operation: e.target.value }))} placeholder="Years in business" />
+        </Row>
+        <Row label="Annual Revenue (₹)" field="annual_revenue">
+          <input className="glass-input text-sm py-1 px-2 flex-1" type="number" value={form.annual_revenue}
+            onChange={e => setForm(p => ({ ...p, annual_revenue: e.target.value }))} placeholder="Revenue in ₹" />
+        </Row>
+        <Row label="Category" field="category">
+          <select className="glass-input text-sm py-1 px-2 flex-1" value={form.category}
+            onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
+            <option value="">— select —</option>
+            <option value="technology_cloud">Technology & Cloud</option>
+            <option value="it_products_software">IT Products & Software</option>
+            <option value="financial_fintech">Financial & Fintech</option>
+            <option value="outsourcing_data">Outsourcing & Data</option>
+            <option value="professional_services">Professional Services</option>
+            <option value="facilities_operations">Facilities & Operations</option>
+          </select>
+        </Row>
+        <Row label="Criticality" field="criticality">
+          <select className="glass-input text-sm py-1 px-2 flex-1" value={form.criticality}
+            onChange={e => setForm(p => ({ ...p, criticality: e.target.value }))}>
+            <option value="">— select —</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </Row>
+        <Row label="Health Status" field="health_status">
+          <select className="glass-input text-sm py-1 px-2 flex-1" value={form.health_status}
+            onChange={e => setForm(p => ({ ...p, health_status: e.target.value }))}>
+            <option value="green">Green ✅</option>
+            <option value="amber">Amber ⚠️</option>
+            <option value="red">Red 🔴</option>
+          </select>
+        </Row>
 
+        <div className="py-2.5 border-b border-white/5">
+          <div className="text-sm mb-1.5" style={{ color: 'var(--text-muted)' }}>Service Description</div>
           {editing ? (
-            <div className="mt-3">
-              <label className="block text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>Service Description</label>
-              <textarea className="glass-input resize-none h-20 text-sm" value={form.service_description}
-                onChange={e => set('service_description', e.target.value)} placeholder="Describe services provided to KVB..." />
-            </div>
+            <textarea className="glass-input resize-none h-20 text-sm w-full" value={form.service_description}
+              onChange={e => setForm(p => ({ ...p, service_description: e.target.value }))}
+              placeholder="Describe services provided to KVB..." />
           ) : (
-            <div className="mt-3 pt-2">
-              <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Service Description</div>
-              <p className="text-sm" style={{ color: vendor.service_description ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
-                {vendor.service_description || '—'}
-              </p>
-            </div>
+            <p className="text-sm" style={{ color: vendor.service_description ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+              {vendor.service_description || '—'}
+            </p>
           )}
-
-          <CreatePortalUser vendorId={vendor.id} vendorName={vendor.name} />
         </div>
 
-        {/* Contract & Risk Card */}
-        <div className="glass-card-flat p-6">
-          <h3 className="font-display font-semibold text-white mb-4">Contract & Risk</h3>
+        <CreatePortalUser vendorId={vendor.id} vendorName={vendor.name} />
+      </div>
 
-          {score ? (
-            <div className="p-4 rounded-xl mb-4" style={{ background: 'rgba(74,159,212,0.08)', border: '1px solid rgba(74,159,212,0.15)' }}>
-              <div className="text-4xl font-bold font-display" style={{ color: score.overall_score >= 80 ? '#4ade80' : score.overall_score >= 50 ? '#fbbf24' : '#f87171' }}>
-                {score.overall_score}%
-              </div>
-              <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Overall risk score · {score.risk_rating} risk</div>
+      {/* Contract & Risk Card */}
+      <div className="glass-card-flat p-6">
+        <h3 className="font-display font-semibold text-white mb-4">Contract & Risk</h3>
+
+        {score ? (
+          <div className="p-4 rounded-xl mb-4" style={{ background: 'rgba(74,159,212,0.08)', border: '1px solid rgba(74,159,212,0.15)' }}>
+            <div className="text-4xl font-bold font-display" style={{ color: score.overall_score >= 80 ? '#4ade80' : score.overall_score >= 50 ? '#fbbf24' : '#f87171' }}>
+              {score.overall_score}%
             </div>
-          ) : (
-            <div className="p-4 rounded-xl mb-4 text-sm" style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)' }}>
-              No risk score yet — complete the questionnaire
-            </div>
-          )}
+            <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Overall risk score · {score.risk_rating} risk</div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl mb-4 text-sm" style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)' }}>
+            No risk score yet — complete the questionnaire
+          </div>
+        )}
 
-          <Field label="Contract Start" field="contract_start_date" type="date" />
-          <Field label="Contract End" field="contract_end_date" type="date" />
-          <Field label="Contract Value (₹)" field="contract_value" type="number" />
-          <Field label="Auto Renewal" field="auto_renewal" type="checkbox" />
-          <div className="flex items-start justify-between py-2.5 border-b border-white/5">
-            <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 140 }}>Owner</span>
-            <span className="text-sm text-white font-medium">{vendor.owner_name || '—'}</span>
-          </div>
-          <div className="flex items-start justify-between py-2.5 border-b border-white/5">
-            <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 140 }}>Status</span>
-            <span className="badge badge-blue">{vendor.status?.replace(/_/g, ' ')}</span>
-          </div>
-          <div className="flex items-start justify-between py-2.5 border-b border-white/5">
-            <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 140 }}>Added On</span>
-            <span className="text-sm text-white">{new Date(vendor.created_at).toLocaleDateString('en-IN')}</span>
-          </div>
-          <div className="flex items-start justify-between py-2.5">
-            <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 140 }}>Last Updated</span>
-            <span className="text-sm text-white">{new Date(vendor.updated_at).toLocaleDateString('en-IN')}</span>
-          </div>
+        <Row label="Contract Start" field="contract_start_date">
+          <input className="glass-input text-sm py-1 px-2 flex-1" type="date" value={form.contract_start_date}
+            onChange={e => setForm(p => ({ ...p, contract_start_date: e.target.value }))} />
+        </Row>
+        <Row label="Contract End" field="contract_end_date">
+          <input className="glass-input text-sm py-1 px-2 flex-1" type="date" value={form.contract_end_date}
+            onChange={e => setForm(p => ({ ...p, contract_end_date: e.target.value }))} />
+        </Row>
+        <Row label="Contract Value (₹)" field="contract_value">
+          <input className="glass-input text-sm py-1 px-2 flex-1" type="number" value={form.contract_value}
+            onChange={e => setForm(p => ({ ...p, contract_value: e.target.value }))} placeholder="Enter value" />
+        </Row>
+        <Row label="Auto Renewal" field="auto_renewal">
+          <input type="checkbox" checked={form.auto_renewal}
+            onChange={e => setForm(p => ({ ...p, auto_renewal: e.target.checked }))}
+            className="w-4 h-4 accent-sky-500 mt-1" />
+        </Row>
+        <div className="flex items-center justify-between py-2.5 border-b border-white/5">
+          <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 150 }}>Owner</span>
+          <span className="text-sm text-white font-medium">{vendor.owner_name || '—'}</span>
+        </div>
+        <div className="flex items-center justify-between py-2.5 border-b border-white/5">
+          <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 150 }}>Status</span>
+          <span className="badge badge-blue">{vendor.status?.replace(/_/g, ' ')}</span>
+        </div>
+        <div className="flex items-center justify-between py-2.5 border-b border-white/5">
+          <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 150 }}>Added On</span>
+          <span className="text-sm text-white">{new Date(vendor.created_at).toLocaleDateString('en-IN')}</span>
+        </div>
+        <div className="flex items-center justify-between py-2.5">
+          <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 150 }}>Last Updated</span>
+          <span className="text-sm text-white">{new Date(vendor.updated_at).toLocaleDateString('en-IN')}</span>
+        </div>
 
-          {vendor.subcontractors?.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-white/10">
-              <div className="text-xs mb-2 font-medium" style={{ color: 'var(--text-muted)' }}>SUB-CONTRACTORS ({vendor.subcontractors.length})</div>
-              {vendor.subcontractors.map(s => (
-                <div key={s.id} className="flex items-center justify-between py-1.5">
-                  <span className="text-sm text-white">{s.name}</span>
-                  <div className="flex gap-2">
-                    <span className="badge badge-gray">{s.geography}</span>
-                    {s.has_kvb_data_access && <span className="badge badge-amber">Data Access</span>}
-                    {s.data_outside_india && <span className="badge badge-red">Outside India</span>}
-                  </div>
+        {vendor.subcontractors?.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-white/10">
+            <div className="text-xs mb-2 font-medium" style={{ color: 'var(--text-muted)' }}>SUB-CONTRACTORS</div>
+            {vendor.subcontractors.map(s => (
+              <div key={s.id} className="flex items-center justify-between py-1.5">
+                <span className="text-sm text-white">{s.name}</span>
+                <div className="flex gap-2">
+                  <span className="badge badge-gray">{s.geography}</span>
+                  {s.has_kvb_data_access && <span className="badge badge-amber">Data Access</span>}
+                  {s.data_outside_india && <span className="badge badge-red">Outside India</span>}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
