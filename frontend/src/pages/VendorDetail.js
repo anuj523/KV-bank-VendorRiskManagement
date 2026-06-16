@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Building2, Shield, AlertTriangle, FileCheck,
   TrendingUp, Clock, Bot, Activity, CheckCircle,
-  Loader, Upload, X, Eye
+  Loader, Upload, X, Eye, Sparkles
 } from 'lucide-react';
 import api from '../utils/api';
 
@@ -25,11 +25,6 @@ const STATUS_LABELS = {
   active: 'Activate', rejected: 'Reject', under_review: 'Send for Review',
   renewal_pending: 'Flag for Renewal', suspended: 'Suspend',
   offboarding_initiated: 'Initiate Offboarding', pending_reapproval: 'Request Re-approval'
-};
-
-const DOMAIN_LABELS = {
-  cybersecurity: 'Cybersecurity', operational: 'Operational',
-  compliance_legal: 'Compliance & Legal', financial: 'Financial', reputational: 'Reputational'
 };
 
 const DOCUMENT_TYPES = [
@@ -61,6 +56,8 @@ function DocumentsTab({ vendor, onRefresh }) {
   const [form, setForm] = useState({ document_type: '', valid_from: '', valid_until: '', is_mandatory: false });
   const [file, setFile] = useState(null);
   const [reviewing, setReviewing] = useState(null);
+  const [aiSummary, setAiSummary] = useState(null);
+  const [aiLoading, setAiLoading] = useState(null);
   const fileRef = useRef();
 
   const handleUpload = async (e) => {
@@ -99,15 +96,50 @@ function DocumentsTab({ vendor, onRefresh }) {
     }
   };
 
+  const runDocumentAI = async (doc) => {
+    setAiLoading(doc.id);
+    setAiSummary(null);
+    try {
+      // Pass document metadata as context (actual text extraction would need pdf-parse)
+      const data = await api.post(`/ai/document-summary/${doc.id}`, {
+        document_text: `Document Type: ${doc.document_type}\nFile: ${doc.file_name}\nValid From: ${doc.valid_from || 'N/A'}\nValid Until: ${doc.valid_until || 'N/A'}\nUploaded: ${new Date(doc.created_at).toLocaleDateString('en-IN')}\nStatus: ${doc.status}`
+      });
+      setAiSummary({ docName: doc.document_type, text: data.text });
+    } catch (err) {
+      setAiSummary({ docName: doc.document_type, text: 'AI analysis failed: ' + err.message, error: true });
+    } finally {
+      setAiLoading(null);
+    }
+  };
+
+  const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   return (
     <div className="space-y-4">
-      {/* Upload button */}
       <div className="flex justify-between items-center">
         <h3 className="font-display font-semibold text-white">Documents ({vendor.documents?.length || 0})</h3>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary flex items-center gap-2">
-          <Upload size={15} />
-          Upload Document
+          <Upload size={15} /> Upload Document
         </button>
+      </div>
+
+      {/* Document flow explanation */}
+      <div className="flex items-center gap-2 text-xs overflow-x-auto pb-1">
+        {[
+          { label: 'Upload', color: '#60a5fa' },
+          { label: '→', color: 'var(--text-muted)' },
+          { label: 'Pending Review', color: '#fbbf24' },
+          { label: '→', color: 'var(--text-muted)' },
+          { label: 'Approved ✓', color: '#4ade80' },
+          { label: '/', color: 'var(--text-muted)' },
+          { label: 'Rejected ✗', color: '#f87171' },
+          { label: '→', color: 'var(--text-muted)' },
+          { label: 'Expiry Tracked', color: '#a78bfa' },
+          { label: '→', color: 'var(--text-muted)' },
+          { label: 'Risk Score Updated', color: '#0ea5a0' },
+        ].map((item, i) => (
+          <span key={i} style={{ color: item.color, whiteSpace: 'nowrap' }} className="font-medium">{item.label}</span>
+        ))}
       </div>
 
       {/* Upload form */}
@@ -140,11 +172,9 @@ function DocumentsTab({ vendor, onRefresh }) {
             </div>
             <div>
               <label className="block text-xs mb-1.5" style={{ color: 'var(--text-secondary)' }}>File * (PDF, DOCX, XLSX, PNG, JPG — max 20MB)</label>
-              <div
-                className="glass-input flex items-center gap-3 cursor-pointer"
+              <div className="glass-input flex items-center gap-3 cursor-pointer"
                 onClick={() => fileRef.current.click()}
-                style={{ borderStyle: 'dashed' }}
-              >
+                style={{ borderStyle: 'dashed' }}>
                 <Upload size={16} style={{ color: 'var(--text-muted)' }} />
                 <span style={{ color: file ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                   {file ? file.name : 'Click to select file...'}
@@ -168,6 +198,21 @@ function DocumentsTab({ vendor, onRefresh }) {
               <button type="button" onClick={() => setShowForm(false)} className="btn-glass">Cancel</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* AI Summary result */}
+      {aiSummary && (
+        <div className="glass-card-flat p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Bot size={16} className="text-sky-400" />
+            <span className="font-medium text-white text-sm">AI Summary — {aiSummary.docName}</span>
+            <button onClick={() => setAiSummary(null)} className="ml-auto"><X size={14} style={{ color: 'var(--text-muted)' }} /></button>
+          </div>
+          <pre className="text-xs whitespace-pre-wrap leading-relaxed"
+            style={{ color: aiSummary.error ? '#f87171' : 'var(--text-secondary)', fontFamily: 'inherit' }}>
+            {aiSummary.text}
+          </pre>
         </div>
       )}
 
@@ -199,44 +244,50 @@ function DocumentsTab({ vendor, onRefresh }) {
                     <div className="text-xs mt-1" style={{ color: '#f87171' }}>{d.rejection_reason}</div>
                   )}
                 </td>
-                <td className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                <td className="text-sm" style={{ color: d.valid_until && new Date(d.valid_until) < new Date() ? '#f87171' : 'var(--text-muted)' }}>
                   {d.valid_until ? new Date(d.valid_until).toLocaleDateString('en-IN') : '—'}
+                  {d.valid_until && new Date(d.valid_until) < new Date() && (
+                    <div className="text-xs text-red-400">Expired</div>
+                  )}
                 </td>
                 <td className="text-sm" style={{ color: 'var(--text-muted)' }}>
                   {new Date(d.created_at).toLocaleDateString('en-IN')}
                 </td>
                 <td>
-                  {d.status === 'pending' && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleReview(d.id, 'approved')}
-                        disabled={reviewing === d.id}
-                        className="text-xs py-1 px-2 rounded-lg border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-all"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => {
-                          const reason = prompt('Rejection reason:');
-                          if (reason) handleReview(d.id, 'rejected', reason);
-                        }}
-                        disabled={reviewing === d.id}
-                        className="text-xs py-1 px-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  )}
-                  {d.status !== 'pending' && (
-                    <a
-                      href={`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${d.file_path}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn-glass py-1 px-3 text-xs flex items-center gap-1 w-fit"
-                    >
-                      <Eye size={12} /> View
+                  <div className="flex gap-1.5 flex-wrap">
+                    {d.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => handleReview(d.id, 'approved')}
+                          disabled={reviewing === d.id}
+                          className="text-xs py-1 px-2 rounded-lg border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-all">
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => { const r = prompt('Rejection reason:'); if (r) handleReview(d.id, 'rejected', r); }}
+                          disabled={reviewing === d.id}
+                          className="text-xs py-1 px-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all">
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    {/* AI Analyse button for all documents */}
+                    <button
+                      onClick={() => runDocumentAI(d)}
+                      disabled={aiLoading === d.id}
+                      title="AI Document Summary"
+                      className="text-xs py-1 px-2 rounded-lg border border-sky-500/30 text-sky-400 hover:bg-sky-500/10 transition-all flex items-center gap-1">
+                      {aiLoading === d.id
+                        ? <Loader size={11} className="animate-spin" />
+                        : <Sparkles size={11} />}
+                      AI
+                    </button>
+                    <a href={`${BASE_URL}${d.file_path}`}
+                      target="_blank" rel="noreferrer"
+                      className="text-xs py-1 px-2 rounded-lg border border-white/15 text-white/60 hover:text-white transition-all flex items-center gap-1">
+                      <Eye size={11} /> View
                     </a>
-                  )}
+                  </div>
                 </td>
               </tr>
             )) : (
@@ -249,6 +300,13 @@ function DocumentsTab({ vendor, onRefresh }) {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Flow explanation note */}
+      <div className="text-xs p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <strong className="text-white/50">How documents flow:</strong> Uploaded → Pending Review → Approve/Reject by KVB officer → 
+        Approved docs tracked on Documents dashboard for expiry → Uploading key docs (SOC 2, BCP, VAPT) automatically updates questionnaire compliance → 
+        Affects risk score on next questionnaire save → Vendor health indicator updates on dashboard.
       </div>
     </div>
   );
@@ -265,6 +323,7 @@ export default function VendorDetail() {
   const [statusChanging, setStatusChanging] = useState(false);
 
   const loadVendor = () => {
+    setLoading(true);
     api.get(`/vendors/${id}`)
       .then(setVendor)
       .catch(console.error)
@@ -278,11 +337,8 @@ export default function VendorDetail() {
     try {
       const updated = await api.patch(`/vendors/${id}/status`, { status: newStatus });
       setVendor(prev => ({ ...prev, ...updated }));
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setStatusChanging(false);
-    }
+    } catch (err) { alert(err.message); }
+    finally { setStatusChanging(false); }
   };
 
   const runAI = async (type) => {
@@ -297,9 +353,7 @@ export default function VendorDetail() {
       setAiResult({ type, text: data.text, id: data.analysis?.id });
     } catch (err) {
       setAiResult({ type, text: 'AI analysis failed: ' + err.message, error: true });
-    } finally {
-      setAiLoading(null);
-    }
+    } finally { setAiLoading(null); }
   };
 
   if (loading) return <div className="flex items-center justify-center h-64">
@@ -323,11 +377,8 @@ export default function VendorDetail() {
 
   return (
     <div className="space-y-6 animate-in">
-      {/* Header */}
       <div className="flex items-start gap-4">
-        <button onClick={() => navigate('/vendors')} className="btn-glass p-2 mt-1">
-          <ArrowLeft size={18} />
-        </button>
+        <button onClick={() => navigate('/vendors')} className="btn-glass p-2 mt-1"><ArrowLeft size={18} /></button>
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-3 mb-1">
             <h1 className="font-display text-2xl font-bold text-white">{vendor.name}</h1>
@@ -348,10 +399,9 @@ export default function VendorDetail() {
               {nextStatuses.map(s => (
                 <button key={s} onClick={() => changeStatus(s)} disabled={statusChanging}
                   className={`text-xs py-1.5 px-3 rounded-lg border transition-all ${
-                    s === 'rejected' || s === 'suspended' || s === 'offboarding_initiated'
+                    ['rejected','suspended','offboarding_initiated'].includes(s)
                       ? 'border-red-500/30 text-red-400 hover:bg-red-500/10'
-                      : s === 'active'
-                      ? 'border-green-500/30 text-green-400 hover:bg-green-500/10'
+                      : s === 'active' ? 'border-green-500/30 text-green-400 hover:bg-green-500/10'
                       : 'btn-glass'
                   }`}>
                   {STATUS_LABELS[s] || s}
@@ -362,7 +412,6 @@ export default function VendorDetail() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-xl overflow-x-auto" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
         {tabs.map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setActiveTab(key)}
@@ -374,58 +423,36 @@ export default function VendorDetail() {
         ))}
       </div>
 
-      {/* Overview Tab */}
       {activeTab === 'overview' && (
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="glass-card-flat p-6 space-y-4">
+          <div className="glass-card-flat p-6 space-y-3">
             <h3 className="font-display font-semibold text-white">Vendor Details</h3>
-            {[
-              ['Contact Person', vendor.contact_person],
-              ['Email', vendor.email],
-              ['Phone', vendor.contact_phone],
-              ['Country', vendor.incorporation_country],
-              ['Employees', vendor.employee_count],
-              ['Years Operating', vendor.years_in_operation],
-            ].map(([label, value]) => value ? (
-              <div key={label} className="flex justify-between py-2 border-b border-white/5">
-                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{label}</span>
-                <span className="text-sm text-white font-medium">{value}</span>
+            {[['Contact Person',vendor.contact_person],['Email',vendor.email],['Phone',vendor.contact_phone],['Country',vendor.incorporation_country],['Employees',vendor.employee_count],['Years Operating',vendor.years_in_operation]].map(([l,v]) => v ? (
+              <div key={l} className="flex justify-between py-2 border-b border-white/5">
+                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{l}</span>
+                <span className="text-sm text-white font-medium">{v}</span>
               </div>
             ) : null)}
-            {vendor.service_description && (
-              <div className="pt-2">
-                <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Service Description</div>
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{vendor.service_description}</p>
-              </div>
-            )}
+            {vendor.service_description && <p className="text-sm pt-2" style={{ color: 'var(--text-secondary)' }}>{vendor.service_description}</p>}
           </div>
-          <div className="glass-card-flat p-6 space-y-4">
+          <div className="glass-card-flat p-6 space-y-3">
             <h3 className="font-display font-semibold text-white">Contract & Risk</h3>
             {score && (
-              <div className="p-4 rounded-xl" style={{ background: 'rgba(74,159,212,0.08)', border: '1px solid rgba(74,159,212,0.15)' }}>
-                <div className="text-4xl font-bold font-display mb-1" style={{ color: score.overall_score >= 80 ? '#4ade80' : score.overall_score >= 50 ? '#fbbf24' : '#f87171' }}>
-                  {score.overall_score}%
-                </div>
-                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Overall risk score · {score.risk_rating} risk</div>
+              <div className="p-4 rounded-xl mb-2" style={{ background: 'rgba(74,159,212,0.08)', border: '1px solid rgba(74,159,212,0.15)' }}>
+                <div className="text-4xl font-bold font-display" style={{ color: score.overall_score >= 80 ? '#4ade80' : score.overall_score >= 50 ? '#fbbf24' : '#f87171' }}>{score.overall_score}%</div>
+                <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Overall · {score.risk_rating} risk</div>
               </div>
             )}
-            {[
-              ['Contract Start', vendor.contract_start_date ? new Date(vendor.contract_start_date).toLocaleDateString('en-IN') : null],
-              ['Contract End', vendor.contract_end_date ? new Date(vendor.contract_end_date).toLocaleDateString('en-IN') : null],
-              ['Contract Value', vendor.contract_value ? `₹${Number(vendor.contract_value).toLocaleString('en-IN')}` : null],
-              ['Auto Renewal', vendor.auto_renewal ? 'Yes' : 'No'],
-              ['Owner', vendor.owner_name],
-            ].map(([label, value]) => value ? (
-              <div key={label} className="flex justify-between py-2 border-b border-white/5">
-                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{label}</span>
-                <span className="text-sm text-white font-medium">{value}</span>
+            {[['Contract Start',vendor.contract_start_date?new Date(vendor.contract_start_date).toLocaleDateString('en-IN'):null],['Contract End',vendor.contract_end_date?new Date(vendor.contract_end_date).toLocaleDateString('en-IN'):null],['Contract Value',vendor.contract_value?`₹${Number(vendor.contract_value).toLocaleString('en-IN')}`:null],['Auto Renewal',vendor.auto_renewal?'Yes':'No'],['Owner',vendor.owner_name]].map(([l,v]) => v ? (
+              <div key={l} className="flex justify-between py-2 border-b border-white/5">
+                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{l}</span>
+                <span className="text-sm text-white font-medium">{v}</span>
               </div>
             ) : null)}
           </div>
         </div>
       )}
 
-      {/* Risk Tab */}
       {activeTab === 'risk' && (
         <div className="glass-card-flat p-6">
           <h3 className="font-display font-semibold text-white mb-6">Risk Domain Scores</h3>
@@ -436,14 +463,12 @@ export default function VendorDetail() {
               <ScoreBar label="Compliance & Legal" value={score.compliance_score} />
               <ScoreBar label="Financial" value={score.financial_score} />
               <ScoreBar label="Reputational" value={score.reputational_score} />
-              <div className="mt-6 pt-6 border-t border-white/10">
+              <div className="pt-6 border-t border-white/10">
                 <ScoreBar label="Overall Risk Score" value={score.overall_score} />
               </div>
             </div>
           ) : (
-            <div className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
-              No risk scores yet. Complete the questionnaire to generate scores.
-            </div>
+            <div className="text-center py-12" style={{ color: 'var(--text-muted)' }}>No risk scores yet. Complete the questionnaire to generate scores.</div>
           )}
           <div className="mt-6">
             <Link to={`/risk/${id}`} className="btn-primary inline-flex items-center gap-2">
@@ -453,12 +478,11 @@ export default function VendorDetail() {
         </div>
       )}
 
-      {/* Findings Tab */}
       {activeTab === 'findings' && (
         <div className="glass-card-flat overflow-hidden">
           <div className="p-6 border-b border-white/10 flex items-center justify-between">
             <h3 className="font-display font-semibold text-white">Findings</h3>
-            <span className="badge badge-red">{vendor.findings?.filter(f => f.status !== 'closed').length || 0} open</span>
+            <span className="badge badge-red">{vendor.findings?.filter(f=>f.status!=='closed').length||0} open</span>
           </div>
           <table className="glass-table">
             <thead><tr><th>Finding</th><th>Severity</th><th>Domain</th><th>Status</th><th>Due</th></tr></thead>
@@ -466,43 +490,35 @@ export default function VendorDetail() {
               {vendor.findings?.length ? vendor.findings.map(f => (
                 <tr key={f.id}>
                   <td><div className="font-medium text-white text-sm">{f.title}</div></td>
-                  <td><span className={`badge ${f.severity === 'high' ? 'badge-red' : f.severity === 'medium' ? 'badge-amber' : 'badge-blue'}`}>{f.severity}</span></td>
-                  <td style={{ color: 'var(--text-muted)' }}>{f.domain?.replace(/_/g, ' ')}</td>
-                  <td><span className="badge badge-gray">{f.status?.replace(/_/g, ' ')}</span></td>
-                  <td className="text-sm" style={{ color: 'var(--text-muted)' }}>{f.target_date ? new Date(f.target_date).toLocaleDateString('en-IN') : '—'}</td>
+                  <td><span className={`badge ${f.severity==='high'?'badge-red':f.severity==='medium'?'badge-amber':'badge-blue'}`}>{f.severity}</span></td>
+                  <td style={{ color:'var(--text-muted)' }}>{f.domain?.replace(/_/g,' ')}</td>
+                  <td><span className="badge badge-gray">{f.status?.replace(/_/g,' ')}</span></td>
+                  <td className="text-sm" style={{ color:'var(--text-muted)' }}>{f.target_date?new Date(f.target_date).toLocaleDateString('en-IN'):'—'}</td>
                 </tr>
-              )) : (
-                <tr><td colSpan={5} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>No findings</td></tr>
-              )}
+              )) : <tr><td colSpan={5} className="text-center py-10" style={{ color:'var(--text-muted)' }}>No findings</td></tr>}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Documents Tab */}
-      {activeTab === 'documents' && (
-        <DocumentsTab vendor={vendor} onRefresh={loadVendor} />
-      )}
+      {activeTab === 'documents' && <DocumentsTab vendor={vendor} onRefresh={loadVendor} />}
 
-      {/* AI Tab */}
       {activeTab === 'ai' && (
         <div className="space-y-4">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { type: 'risk_summary', label: 'Risk Summary', desc: 'Executive risk overview', icon: Shield },
-              { type: 'gap_analysis', label: 'Gap Analysis', desc: 'Questionnaire vs documents', icon: AlertTriangle },
-              { type: 'mitigation', label: 'Mitigations', desc: 'Fix recommendations', icon: CheckCircle },
-              { type: 'audit_frequency', label: 'Audit Frequency', desc: 'Review schedule recommendation', icon: Clock },
-            ].map(({ type, label, desc, icon: Icon }) => (
+              { type:'risk_summary', label:'Risk Summary', desc:'Executive risk overview', icon:Shield },
+              { type:'gap_analysis', label:'Gap Analysis', desc:'Questionnaire vs documents', icon:AlertTriangle },
+              { type:'mitigation', label:'Mitigations', desc:'Fix recommendations', icon:CheckCircle },
+              { type:'audit_frequency', label:'Audit Frequency', desc:'Review schedule recommendation', icon:Clock },
+            ].map(({ type, label, desc, icon:Icon }) => (
               <button key={type} onClick={() => runAI(type)} disabled={aiLoading !== null}
-                className="glass-card p-4 text-left group hover:border-sky-400/30 transition-all">
+                className="glass-card p-4 text-left hover:border-sky-400/30 transition-all">
                 <div className="flex items-center gap-2 mb-2">
-                  {aiLoading === type
-                    ? <Loader size={16} className="text-sky-400 animate-spin" />
-                    : <Icon size={16} className="text-sky-400" />}
+                  {aiLoading===type ? <Loader size={16} className="text-sky-400 animate-spin" /> : <Icon size={16} className="text-sky-400" />}
                   <span className="font-medium text-white text-sm">{label}</span>
                 </div>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{desc}</p>
+                <p className="text-xs" style={{ color:'var(--text-muted)' }}>{desc}</p>
               </button>
             ))}
           </div>
@@ -513,19 +529,15 @@ export default function VendorDetail() {
                 <h3 className="font-display font-semibold text-white">AI Analysis</h3>
                 {!aiResult.error && aiResult.id && (
                   <div className="ml-auto flex gap-2">
-                    <button className="btn-glass text-xs py-1 px-3" style={{ color: '#4ade80' }}
-                      onClick={() => api.patch(`/ai/analyses/${aiResult.id}/review`, { status: 'accepted' })}>
-                      Accept
-                    </button>
-                    <button className="btn-glass text-xs py-1 px-3" style={{ color: '#f87171' }}
-                      onClick={() => { api.patch(`/ai/analyses/${aiResult.id}/review`, { status: 'rejected' }); setAiResult(null); }}>
-                      Dismiss
-                    </button>
+                    <button className="btn-glass text-xs py-1 px-3" style={{ color:'#4ade80' }}
+                      onClick={() => api.patch(`/ai/analyses/${aiResult.id}/review`,{status:'accepted'})}>Accept</button>
+                    <button className="btn-glass text-xs py-1 px-3" style={{ color:'#f87171' }}
+                      onClick={() => { api.patch(`/ai/analyses/${aiResult.id}/review`,{status:'rejected'}); setAiResult(null); }}>Dismiss</button>
                   </div>
                 )}
               </div>
               <pre className="text-sm whitespace-pre-wrap leading-relaxed"
-                style={{ color: aiResult.error ? '#f87171' : 'var(--text-secondary)', fontFamily: 'inherit' }}>
+                style={{ color:aiResult.error?'#f87171':'var(--text-secondary)', fontFamily:'inherit' }}>
                 {aiResult.text}
               </pre>
             </div>
@@ -533,7 +545,6 @@ export default function VendorDetail() {
         </div>
       )}
 
-      {/* Audit Tab */}
       {activeTab === 'audit' && <AuditTrail vendorId={id} />}
     </div>
   );
@@ -542,39 +553,31 @@ export default function VendorDetail() {
 function AuditTrail({ vendorId }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
-    api.get(`/vendors/${vendorId}/audit`)
-      .then(setLogs).catch(console.error).finally(() => setLoading(false));
+    api.get(`/vendors/${vendorId}/audit`).then(setLogs).catch(console.error).finally(() => setLoading(false));
   }, [vendorId]);
-
-  if (loading) return <div className="text-center py-8">
-    <div className="w-6 h-6 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin mx-auto" />
-  </div>;
-
+  if (loading) return <div className="text-center py-8"><div className="w-6 h-6 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin mx-auto" /></div>;
   return (
     <div className="glass-card-flat overflow-hidden">
       <div className="p-6 border-b border-white/10">
         <h3 className="font-display font-semibold text-white">Audit Trail</h3>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Immutable — all actions logged</p>
+        <p className="text-xs mt-1" style={{ color:'var(--text-muted)' }}>Immutable — all actions logged</p>
       </div>
       <div className="divide-y divide-white/5">
         {logs.length ? logs.map(log => (
           <div key={log.id} className="p-4 flex items-start gap-4">
-            <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ background: 'var(--accent-blue)' }} />
-            <div className="flex-1 min-w-0">
+            <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ background:'var(--accent-blue)' }} />
+            <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-medium text-white">{log.action?.replace(/_/g, ' ')}</span>
+                <span className="text-sm font-medium text-white">{log.action?.replace(/_/g,' ')}</span>
                 {log.entity_type && <span className="badge badge-gray text-xs">{log.entity_type}</span>}
               </div>
-              <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                {log.user_name || log.vendor_user_name || 'System'} · {new Date(log.created_at).toLocaleString('en-IN')}
+              <div className="text-xs mt-1" style={{ color:'var(--text-muted)' }}>
+                {log.user_name||log.vendor_user_name||'System'} · {new Date(log.created_at).toLocaleString('en-IN')}
               </div>
             </div>
           </div>
-        )) : (
-          <div className="text-center py-10" style={{ color: 'var(--text-muted)' }}>No audit logs yet</div>
-        )}
+        )) : <div className="text-center py-10" style={{ color:'var(--text-muted)' }}>No audit logs yet</div>}
       </div>
     </div>
   );
