@@ -85,7 +85,10 @@ router.post('/:vendorId/questionnaire', auth, async (req, res) => {
         await query(
           `INSERT INTO findings (vendor_id, finding_ref, title, description, severity, domain, is_regulatory, regulatory_ref, target_date, linked_question_key)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8, NOW() + INTERVAL '30 days', $9)
-           ON CONFLICT (finding_ref) DO NOTHING`,
+           ON CONFLICT (finding_ref) DO UPDATE SET 
+             title = EXCLUDED.title,
+             description = EXCLUDED.description,
+             severity = EXCLUDED.severity`,
           [
             vendorId,
             findingRef,
@@ -100,13 +103,16 @@ router.post('/:vendorId/questionnaire', auth, async (req, res) => {
       }
     }
 
-    // Recalculate risk score
-    const score = await calculateRiskScore(vendorId, req.user.id);
-    await auditLog(req, 'questionnaire_submitted', 'vendor', vendorId, null, { responses_count: responses.length });
+    // Recalculate risk score - use internal user id only (vendors don't have users table entry)
+    const scoredById = req.user.type === 'internal' ? req.user.id : null;
+    const score = await calculateRiskScore(vendorId, scoredById);
+    if (req.user.type === 'internal') {
+      await auditLog(req, 'questionnaire_submitted', 'vendor', vendorId, null, { responses_count: responses.length });
+    }
     res.json({ score, message: 'Questionnaire saved and scored' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Questionnaire save error:', err.message, err.stack);
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -153,7 +159,7 @@ async function calculateRiskScore(vendorId, userId) {
     await query(
       `INSERT INTO risk_scores (vendor_id, cybersecurity_score, operational_score, compliance_score, financial_score, reputational_score, overall_score, risk_rating, scored_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [vendorId, domainScores.cybersecurity, domainScores.operational, domainScores.compliance_legal, domainScores.financial, domainScores.reputational, overall, rating, userId]
+      [vendorId, domainScores.cybersecurity || null, domainScores.operational || null, domainScores.compliance_legal || null, domainScores.financial || null, domainScores.reputational || null, overall, rating, userId || null]
     );
     await query(
       'UPDATE vendors SET overall_risk_score = $1, risk_rating = $2, updated_at = NOW() WHERE id = $3',

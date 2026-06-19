@@ -24,7 +24,7 @@ router.post('/login', async (req, res) => {
     res.json({ token, user: safeUser });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -50,7 +50,7 @@ router.post('/vendor-login', async (req, res) => {
     res.json({ token, user: { ...safeUser, type: 'vendor' } });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -73,7 +73,7 @@ router.post('/register', auth, async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Email already exists' });
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -84,7 +84,7 @@ router.get('/users', auth, async (req, res) => {
     const result = await query('SELECT id, email, full_name, role, is_active, created_at FROM users ORDER BY full_name');
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

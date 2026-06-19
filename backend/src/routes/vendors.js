@@ -38,7 +38,7 @@ router.get('/', auth, async (req, res) => {
     res.json({ vendors: result.rows, total, page: parseInt(page), pages: Math.ceil(total / limit) });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -66,7 +66,7 @@ router.get('/:id', auth, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -95,7 +95,7 @@ router.post('/', auth, async (req, res) => {
     res.status(201).json(vendor);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -143,7 +143,7 @@ router.put('/:id', auth, async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -181,7 +181,7 @@ router.patch('/:id/status', auth, async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -200,7 +200,7 @@ router.get('/:id/audit', auth, async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -227,7 +227,7 @@ router.get('/stats/overview', auth, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -299,7 +299,7 @@ router.delete('/:id', auth, async (req, res) => {
     res.json({ success: true, message: `Vendor "${vendor.name}" has been permanently deleted.` });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

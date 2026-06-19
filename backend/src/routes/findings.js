@@ -40,7 +40,7 @@ router.get('/', auth, async (req, res) => {
     res.json({ findings: result.rows, total: parseInt(countRes.rows[0].count) });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -56,7 +56,7 @@ router.get('/:id', auth, async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -99,7 +99,7 @@ router.patch('/:id', auth, async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
@@ -122,7 +122,7 @@ router.get('/stats/summary', auth, async (req, res) => {
       recent: recent.rows
     });
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

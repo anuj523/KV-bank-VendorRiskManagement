@@ -244,3 +244,12 @@ CREATE TRIGGER findings_updated_at BEFORE UPDATE ON findings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER workflows_updated_at BEFORE UPDATE ON workflows
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Ensure finding_ref unique constraint exists (safe to run multiple times)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'findings_finding_ref_key'
+  ) THEN
+    ALTER TABLE findings ADD CONSTRAINT findings_finding_ref_key UNIQUE (finding_ref);
+  END IF;
+END $$;
