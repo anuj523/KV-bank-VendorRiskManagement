@@ -232,3 +232,19 @@ function buildQuestionnaire(category) {
 }
 
 module.exports = router;
+
+// Reset questionnaire for a vendor (admin only) — clears all answers and scores
+router.delete('/:vendorId/reset', auth, async (req, res) => {
+  if (req.user.role !== 'system_administrator') {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+  try {
+    await query('DELETE FROM questionnaire_responses WHERE vendor_id = $1', [req.params.vendorId]);
+    await query('DELETE FROM risk_scores WHERE vendor_id = $1', [req.params.vendorId]);
+    await query('DELETE FROM findings WHERE vendor_id = $1 AND linked_question_key IS NOT NULL', [req.params.vendorId]);
+    await query('UPDATE vendors SET overall_risk_score = NULL, risk_rating = NULL WHERE id = $1', [req.params.vendorId]);
+    res.json({ success: true, message: 'Questionnaire, scores and auto-raised findings reset' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});

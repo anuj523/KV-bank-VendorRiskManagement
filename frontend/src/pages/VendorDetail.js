@@ -698,9 +698,13 @@ export default function VendorDetail() {
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-3 mb-1">
             <h1 className="font-display text-2xl font-bold text-white">{vendor.name}</h1>
-            <span className={`badge ${vendor.criticality === 'high' ? 'badge-red' : vendor.criticality === 'medium' ? 'badge-amber' : 'badge-green'}`}>
-              {vendor.criticality || '—'} criticality
-            </span>
+            {vendor.criticality ? (
+              <span className={`badge ${vendor.criticality === 'high' ? 'badge-red' : vendor.criticality === 'medium' ? 'badge-amber' : 'badge-green'}`}>
+                {vendor.criticality} criticality
+              </span>
+            ) : (
+              <span className="badge badge-gray">criticality not set — edit to add</span>
+            )}
             <div className="flex items-center gap-1.5">
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: healthColor, boxShadow: `0 0 6px ${healthColor}` }} />
               <span className="text-sm" style={{ color: healthColor }}>{vendor.health_status}</span>
