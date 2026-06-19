@@ -328,6 +328,18 @@ function DocumentsTab({ vendor, onRefresh }) {
   );
 }
 
+// Row must be outside OverviewTab to prevent cursor jumping on re-render
+function VendorRow({ label, editing, displayValue, children }) {
+  return (
+    <div className="flex items-start justify-between py-2.5 border-b border-white/5 gap-4">
+      <span className="text-sm flex-shrink-0" style={{ color: 'var(--text-muted)', minWidth: 150 }}>{label}</span>
+      {editing ? children : (
+        <span className="text-sm text-white font-medium text-right">{displayValue}</span>
+      )}
+    </div>
+  );
+}
+
 function OverviewTab({ vendor, score, onRefresh }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -385,14 +397,7 @@ function OverviewTab({ vendor, score, onRefresh }) {
     return val || '—';
   };
 
-  const Row = ({ label, field, children }) => (
-    <div className="flex items-start justify-between py-2.5 border-b border-white/5 gap-4">
-      <span className="text-sm flex-shrink-0" style={{ color: 'var(--text-muted)', minWidth: 150 }}>{label}</span>
-      {editing ? children : (
-        <span className="text-sm text-white font-medium text-right">{displayVal(field)}</span>
-      )}
-    </div>
-  );
+
 
   return (
     <div className="grid md:grid-cols-2 gap-4">
@@ -410,35 +415,35 @@ function OverviewTab({ vendor, score, onRefresh }) {
           )}
         </div>
 
-        <Row label="Contact Person" field="contact_person">
+        <VendorRow label="Contact Person" editing={editing} displayValue={displayVal("contact_person")}>
           <input className="glass-input text-sm py-1 px-2 flex-1" value={form.contact_person}
             onChange={e => setForm(p => ({ ...p, contact_person: e.target.value }))} placeholder="Enter name" />
-        </Row>
-        <Row label="Email" field="email">
+        </VendorRow>
+        <VendorRow label="Email" editing={editing} displayValue={displayVal("email")}>
           <input className="glass-input text-sm py-1 px-2 flex-1" type="email" value={form.email}
             onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="Enter email" />
-        </Row>
-        <Row label="Phone" field="contact_phone">
+        </VendorRow>
+        <VendorRow label="Phone" editing={editing} displayValue={displayVal("contact_phone")}>
           <input className="glass-input text-sm py-1 px-2 flex-1" value={form.contact_phone}
             onChange={e => setForm(p => ({ ...p, contact_phone: e.target.value }))} placeholder="Enter phone" />
-        </Row>
-        <Row label="Country" field="incorporation_country">
+        </VendorRow>
+        <VendorRow label="Country" editing={editing} displayValue={displayVal("incorporation_country")}>
           <input className="glass-input text-sm py-1 px-2 flex-1" value={form.incorporation_country}
             onChange={e => setForm(p => ({ ...p, incorporation_country: e.target.value }))} placeholder="Enter country" />
-        </Row>
-        <Row label="Employees" field="employee_count">
+        </VendorRow>
+        <VendorRow label="Employees" editing={editing} displayValue={displayVal("employee_count")}>
           <input className="glass-input text-sm py-1 px-2 flex-1" type="number" value={form.employee_count}
             onChange={e => setForm(p => ({ ...p, employee_count: e.target.value }))} placeholder="Number of employees" />
-        </Row>
-        <Row label="Years Operating" field="years_in_operation">
+        </VendorRow>
+        <VendorRow label="Years Operating" editing={editing} displayValue={displayVal("years_in_operation")}>
           <input className="glass-input text-sm py-1 px-2 flex-1" type="number" value={form.years_in_operation}
             onChange={e => setForm(p => ({ ...p, years_in_operation: e.target.value }))} placeholder="Years in business" />
-        </Row>
-        <Row label="Annual Revenue (₹)" field="annual_revenue">
+        </VendorRow>
+        <VendorRow label="Annual Revenue (₹)" editing={editing} displayValue={displayVal("annual_revenue")}>
           <input className="glass-input text-sm py-1 px-2 flex-1" type="number" value={form.annual_revenue}
             onChange={e => setForm(p => ({ ...p, annual_revenue: e.target.value }))} placeholder="Revenue in ₹" />
-        </Row>
-        <Row label="Category" field="category">
+        </VendorRow>
+        <VendorRow label="Category" editing={editing} displayValue={displayVal("category")}>
           <select className="glass-input text-sm py-1 px-2 flex-1" value={form.category}
             onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
             <option value="">— select —</option>
@@ -449,8 +454,8 @@ function OverviewTab({ vendor, score, onRefresh }) {
             <option value="professional_services">Professional Services</option>
             <option value="facilities_operations">Facilities & Operations</option>
           </select>
-        </Row>
-        <Row label="Criticality" field="criticality">
+        </VendorRow>
+        <VendorRow label="Criticality" editing={editing} displayValue={displayVal("criticality")}>
           <select className="glass-input text-sm py-1 px-2 flex-1" value={form.criticality}
             onChange={e => setForm(p => ({ ...p, criticality: e.target.value }))}>
             <option value="">— select —</option>
@@ -458,15 +463,15 @@ function OverviewTab({ vendor, score, onRefresh }) {
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
-        </Row>
-        <Row label="Health Status" field="health_status">
+        </VendorRow>
+        <VendorRow label="Health Status" editing={editing} displayValue={displayVal("health_status")}>
           <select className="glass-input text-sm py-1 px-2 flex-1" value={form.health_status}
             onChange={e => setForm(p => ({ ...p, health_status: e.target.value }))}>
             <option value="green">Green ✅</option>
             <option value="amber">Amber ⚠️</option>
             <option value="red">Red 🔴</option>
           </select>
-        </Row>
+        </VendorRow>
 
         <div className="py-2.5 border-b border-white/5">
           <div className="text-sm mb-1.5" style={{ color: 'var(--text-muted)' }}>Service Description</div>
@@ -501,23 +506,23 @@ function OverviewTab({ vendor, score, onRefresh }) {
           </div>
         )}
 
-        <Row label="Contract Start" field="contract_start_date">
+        <VendorRow label="Contract Start" editing={editing} displayValue={displayVal("contract_start_date")}>
           <input className="glass-input text-sm py-1 px-2 flex-1" type="date" value={form.contract_start_date}
             onChange={e => setForm(p => ({ ...p, contract_start_date: e.target.value }))} />
-        </Row>
-        <Row label="Contract End" field="contract_end_date">
+        </VendorRow>
+        <VendorRow label="Contract End" editing={editing} displayValue={displayVal("contract_end_date")}>
           <input className="glass-input text-sm py-1 px-2 flex-1" type="date" value={form.contract_end_date}
             onChange={e => setForm(p => ({ ...p, contract_end_date: e.target.value }))} />
-        </Row>
-        <Row label="Contract Value (₹)" field="contract_value">
+        </VendorRow>
+        <VendorRow label="Contract Value (₹)" editing={editing} displayValue={displayVal("contract_value")}>
           <input className="glass-input text-sm py-1 px-2 flex-1" type="number" value={form.contract_value}
             onChange={e => setForm(p => ({ ...p, contract_value: e.target.value }))} placeholder="Enter value" />
-        </Row>
-        <Row label="Auto Renewal" field="auto_renewal">
+        </VendorRow>
+        <VendorRow label="Auto Renewal" editing={editing} displayValue={displayVal("auto_renewal")}>
           <input type="checkbox" checked={form.auto_renewal}
             onChange={e => setForm(p => ({ ...p, auto_renewal: e.target.checked }))}
             className="w-4 h-4 accent-sky-500 mt-1" />
-        </Row>
+        </VendorRow>
         <div className="flex items-center justify-between py-2.5 border-b border-white/5">
           <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 150 }}>Owner</span>
           <span className="text-sm text-white font-medium">{vendor.owner_name || '—'}</span>
