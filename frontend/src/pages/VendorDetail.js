@@ -331,29 +331,44 @@ function DocumentsTab({ vendor, onRefresh }) {
 function OverviewTab({ vendor, score, onRefresh }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    contact_person: vendor.contact_person || '',
-    email: vendor.email || '',
-    contact_phone: vendor.contact_phone || '',
-    incorporation_country: vendor.incorporation_country || '',
-    employee_count: vendor.employee_count || '',
-    years_in_operation: vendor.years_in_operation || '',
-    annual_revenue: vendor.annual_revenue || '',
-    service_description: vendor.service_description || '',
-    category: vendor.category || '',
-    criticality: vendor.criticality || '',
-    health_status: vendor.health_status || 'green',
-    contract_start_date: vendor.contract_start_date ? vendor.contract_start_date.split('T')[0] : '',
-    contract_end_date: vendor.contract_end_date ? vendor.contract_end_date.split('T')[0] : '',
-    contract_value: vendor.contract_value || '',
-    auto_renewal: vendor.auto_renewal || false,
+
+  const buildForm = (v) => ({
+    contact_person: v.contact_person || '',
+    email: v.email || '',
+    contact_phone: v.contact_phone || '',
+    incorporation_country: v.incorporation_country || '',
+    employee_count: v.employee_count || '',
+    years_in_operation: v.years_in_operation || '',
+    annual_revenue: v.annual_revenue || '',
+    service_description: v.service_description || '',
+    category: v.category || '',
+    criticality: v.criticality || '',
+    health_status: v.health_status || 'green',
+    contract_start_date: v.contract_start_date ? v.contract_start_date.split('T')[0] : '',
+    contract_end_date: v.contract_end_date ? v.contract_end_date.split('T')[0] : '',
+    contract_value: v.contract_value || '',
+    auto_renewal: v.auto_renewal || false,
   });
+
+  const [form, setForm] = useState(() => buildForm(vendor));
+
+  // Sync form when vendor data changes (e.g. after save + refresh)
+  useEffect(() => {
+    if (!editing) {
+      setForm(buildForm(vendor));
+    }
+  // eslint-disable-next-line
+  }, [vendor, editing]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.put(`/vendors/${vendor.id}`, form);
+      const updated = await api.put(`/vendors/${vendor.id}`, form);
       setEditing(false);
+      // Update form immediately with returned data so display is instant
+      if (updated && updated.id) {
+        setForm(buildForm(updated));
+      }
       onRefresh();
     } catch (err) {
       alert('Save failed: ' + err.message);
@@ -361,11 +376,13 @@ function OverviewTab({ vendor, score, onRefresh }) {
   };
 
   const displayVal = (field) => {
-    if (field === 'auto_renewal') return vendor.auto_renewal ? 'Yes' : 'No';
-    if (field === 'contract_value') return vendor.contract_value ? `₹${Number(vendor.contract_value).toLocaleString('en-IN')}` : '—';
-    if (field === 'contract_start_date' || field === 'contract_end_date') return vendor[field] ? new Date(vendor[field]).toLocaleDateString('en-IN') : '—';
-    if (field === 'category') return vendor.category ? vendor.category.replace(/_/g, ' ') : '—';
-    return vendor[field] || '—';
+    // Use form values for display (they're always in sync with latest saved data)
+    const val = form[field];
+    if (field === 'auto_renewal') return val ? 'Yes' : 'No';
+    if (field === 'contract_value') return val ? `₹${Number(val).toLocaleString('en-IN')}` : '—';
+    if (field === 'contract_start_date' || field === 'contract_end_date') return val ? new Date(val).toLocaleDateString('en-IN') : '—';
+    if (field === 'category') return val ? val.replace(/_/g, ' ') : '—';
+    return val || '—';
   };
 
   const Row = ({ label, field, children }) => (
