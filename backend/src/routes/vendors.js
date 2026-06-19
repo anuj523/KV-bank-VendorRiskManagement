@@ -101,8 +101,14 @@ router.post('/', auth, async (req, res) => {
 
 // Update vendor
 router.put('/:id', auth, async (req, res) => {
+  // Vendor users cannot edit vendor records
+  if (req.user.type === 'vendor') {
+    return res.status(403).json({ error: 'Vendors cannot edit vendor records' });
+  }
+
+  // Status must only change via PATCH /:id/status — never via PUT
   const allowed = ['name','legal_name','email','contact_person','contact_phone','description',
-    'service_description','category','criticality','status','health_status',
+    'service_description','category','criticality','health_status',
     'contract_start_date','contract_end_date','contract_value','auto_renewal',
     'owner_id','incorporation_country','years_in_operation','employee_count','annual_revenue'];
 

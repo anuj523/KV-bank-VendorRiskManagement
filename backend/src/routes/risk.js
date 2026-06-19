@@ -239,12 +239,21 @@ router.delete('/:vendorId/reset', auth, async (req, res) => {
     return res.status(403).json({ error: 'Admin only' });
   }
   try {
-    await query('DELETE FROM questionnaire_responses WHERE vendor_id = $1', [req.params.vendorId]);
-    await query('DELETE FROM risk_scores WHERE vendor_id = $1', [req.params.vendorId]);
-    await query('DELETE FROM findings WHERE vendor_id = $1 AND linked_question_key IS NOT NULL', [req.params.vendorId]);
-    await query('UPDATE vendors SET overall_risk_score = NULL, risk_rating = NULL WHERE id = $1', [req.params.vendorId]);
-    res.json({ success: true, message: 'Questionnaire, scores and auto-raised findings reset' });
+    const { vendorId } = req.params;
+    // Log the reset in audit trail before deleting
+    await query(
+      `INSERT INTO audit_trail (vendor_id, user_id, action, entity_type, entity_id, new_value)
+       VALUES ($1, $2, 'questionnaire_reset', 'vendor', $1, $3)`,
+      [vendorId, req.user.id, JSON.stringify({ reset_by: req.user.email })]
+    );
+    await query('DELETE FROM questionnaire_responses WHERE vendor_id = $1', [vendorId]);
+    await query('DELETE FROM risk_scores WHERE vendor_id = $1', [vendorId]);
+    // Only delete auto-raised findings (those linked to questionnaire questions)
+    await query('DELETE FROM findings WHERE vendor_id = $1 AND linked_question_key IS NOT NULL', [vendorId]);
+    await query('UPDATE vendors SET overall_risk_score = NULL, risk_rating = NULL, updated_at = NOW() WHERE id = $1', [vendorId]);
+    res.json({ success: true, message: 'Questionnaire, scores and auto-raised findings have been reset. You can now redo the questionnaire.' });
   } catch (err) {
+    console.error('Reset error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
