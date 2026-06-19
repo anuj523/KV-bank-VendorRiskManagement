@@ -23,7 +23,7 @@ const navItems = [
 
 const vendorNavItems = [
   { path: '/portal/dashboard', label: 'My Dashboard', icon: LayoutDashboard },
-  { path: '/portal/questionnaire', label: 'Questionnaire', icon: FileCheck },
+  { path: '/portal/questionnaire', label: 'Risk Questionnaire', icon: FileCheck },
   { path: '/portal/risk-scores', label: 'My Risk Score', icon: TrendingUp },
   { path: '/portal/documents', label: 'My Documents', icon: Package },
   { path: '/portal/findings', label: 'My Findings', icon: AlertTriangle },

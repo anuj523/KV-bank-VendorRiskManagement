@@ -6,6 +6,15 @@ import api from '../utils/api';
 // ============================================================
 // VENDOR PORTAL QUESTIONNAIRE
 // ============================================================
+const CATEGORIES = [
+  { value: 'technology_cloud', label: 'Technology & Cloud Services' },
+  { value: 'it_products_software', label: 'IT Products & Software' },
+  { value: 'financial_fintech', label: 'Financial & Fintech' },
+  { value: 'outsourcing_data', label: 'Outsourcing & Data Processing' },
+  { value: 'professional_services', label: 'Professional Services' },
+  { value: 'facilities_operations', label: 'Facilities & Operations' },
+];
+
 export function VendorQuestionnaire() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -16,12 +25,16 @@ export function VendorQuestionnaire() {
   const [vendor, setVendor] = useState(null);
   const [activeGroup, setActiveGroup] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [noCategory, setNoCategory] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('');
 
-  useEffect(() => {
+  const loadQuestionnaire = (categoryOverride) => {
     if (!user?.vendor_id) return;
-    api.get(`/risk/${user.vendor_id}/questionnaire`)
+    const url = `/risk/${user.vendor_id}/questionnaire${categoryOverride ? `?category=${categoryOverride}` : ''}`;
+    api.get(url)
       .then(data => {
         setVendor(data.vendor);
+        setNoCategory(data.no_category);
         setQuestions(data.questions || []);
         const ans = {}, n = {};
         (data.responses || []).forEach(r => {
@@ -34,7 +47,9 @@ export function VendorQuestionnaire() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [user]);
+  };
+
+  useEffect(() => { loadQuestionnaire(); }, [user]);
 
   const byDomain = questions.reduce((acc, q) => {
     if (!acc[q.domain]) acc[q.domain] = [];
@@ -82,13 +97,47 @@ export function VendorQuestionnaire() {
     No vendor associated with this account.
   </div>;
 
+  // Show category picker if no category set
+  if (noCategory || !vendor.category) {
+    return (
+      <div className="space-y-6 animate-in max-w-lg">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-white">Risk Questionnaire</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{vendor.name}</p>
+        </div>
+        <div className="glass-card-flat p-6 space-y-4">
+          <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'rgba(74,159,212,0.1)', border: '1px solid rgba(74,159,212,0.2)' }}>
+            <span className="text-sky-400 text-lg">ℹ</span>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Your vendor category hasn't been set yet. Please select the category that best describes your services to KVB — this determines which questions you'll be asked.
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">Select your vendor category *</label>
+            <select className="glass-input" value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}>
+              <option value="">— Choose category —</option>
+              {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+          <button
+            onClick={() => { if (!selectedCategory) return alert('Please select a category'); setLoading(true); loadQuestionnaire(selectedCategory); }}
+            className="btn-primary w-full"
+            disabled={!selectedCategory}
+          >
+            Load My Questionnaire
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-white">Risk Questionnaire</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            {vendor.name} · Please answer all questions honestly and accurately
+            {vendor.name} · {vendor.category?.replace(/_/g, ' ')} · Please answer all questions honestly
           </p>
         </div>
         <div className="text-right">
