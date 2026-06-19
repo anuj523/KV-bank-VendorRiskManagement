@@ -9,8 +9,6 @@ const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-
-// Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
@@ -21,6 +19,9 @@ app.use('/api/risk', require('./src/routes/risk'));
 app.use('/api/findings', require('./src/routes/findings'));
 app.use('/api/documents', require('./src/routes/documents'));
 app.use('/api/ai', require('./src/routes/ai'));
+app.use('/api/escalation', require('./src/routes/escalation'));
+app.use('/api/workflows', require('./src/routes/workflows'));
+app.use('/api/renewals', require('./src/routes/renewals'));
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));

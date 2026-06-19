@@ -692,7 +692,31 @@ export default function VendorDetail() {
         ))}
       </div>
 
-      {activeTab === 'overview' && (
+      {/* Workflow action buttons - shown when vendor is active */}
+    {vendor.status === 'active' && (
+      <div className="flex flex-wrap gap-2 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <span className="text-xs self-center mr-1" style={{ color: 'var(--text-muted)' }}>Workflows:</span>
+        <button onClick={async () => { if(!window.confirm('Initiate periodic review for this vendor?')) return; try { const r = await api.post(`/workflows/periodic-review/${id}`,{}); alert(r.change_summary); loadVendor(); } catch(e){ alert(e.message); }}}
+          className="text-xs py-1.5 px-3 rounded-lg border border-purple-500/30 text-purple-400 hover:bg-purple-500/10 transition-all">
+          🔄 Periodic Review
+        </button>
+        <button onClick={async () => { if(!window.confirm('Initiate renewal workflow?')) return; try { await api.post(`/workflows/renewal/${id}`,{}); loadVendor(); } catch(e){ alert(e.message); }}}
+          className="text-xs py-1.5 px-3 rounded-lg border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-all">
+          📋 Start Renewal
+        </button>
+      </div>
+    )}
+    {vendor.status === 'offboarding_initiated' && (
+      <div className="flex flex-wrap gap-2 p-4 rounded-xl" style={{ background: 'rgba(251,146,60,0.05)', border: '1px solid rgba(251,146,60,0.15)' }}>
+        <span className="text-xs self-center mr-1 text-orange-400 font-medium">⚠ Offboarding in progress:</span>
+        <button onClick={async () => { const r = prompt('IT sign-off notes (confirm access revocation):'); if(!r) return; try { await api.post(`/workflows/offboarding/${id}/complete`,{ notes: r }); loadVendor(); } catch(e){ alert(e.message); }}}
+          className="text-xs py-1.5 px-3 rounded-lg border border-orange-500/30 text-orange-400 hover:bg-orange-500/10 transition-all">
+          ✓ Complete Offboarding (All Sign-offs Done)
+        </button>
+      </div>
+    )}
+
+    {activeTab === 'overview' && (
         <OverviewTab vendor={vendor} score={score} onRefresh={loadVendor} />
       )}
 

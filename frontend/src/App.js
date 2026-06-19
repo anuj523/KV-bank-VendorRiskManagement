@@ -11,7 +11,10 @@ import Findings from './pages/Findings';
 import Documents from './pages/Documents';
 import RiskQuestionnaire from './pages/RiskQuestionnaire';
 import AIInsights from './pages/AIInsights';
-import { SupplyChainPage, CompliancePage, RenewalsPage, SettingsPage } from './pages/Placeholders';
+import Escalation from './pages/Escalation';
+import Renewals from './pages/Renewals';
+import Workflows from './pages/Workflows';
+import { SupplyChainPage, CompliancePage, SettingsPage } from './pages/Placeholders';
 
 function ProtectedRoute({ children, vendorOk }) {
   const { user, loading } = useAuth();
@@ -28,23 +31,28 @@ function ProtectedRoute({ children, vendorOk }) {
 
 function AppRoutes() {
   const { user } = useAuth();
+  const P = ({ children, vendorOk }) => (
+    <ProtectedRoute vendorOk={vendorOk}><AppLayout>{children}</AppLayout></ProtectedRoute>
+  );
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Navigate to={user?.type === 'vendor' ? '/portal/dashboard' : '/dashboard'} replace />} />
-      <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
-      <Route path="/vendors" element={<ProtectedRoute><AppLayout><Vendors /></AppLayout></ProtectedRoute>} />
-      <Route path="/vendors/new" element={<ProtectedRoute><AppLayout><AddVendor /></AppLayout></ProtectedRoute>} />
-      <Route path="/vendors/:id" element={<ProtectedRoute><AppLayout><VendorDetail /></AppLayout></ProtectedRoute>} />
-      <Route path="/findings" element={<ProtectedRoute><AppLayout><Findings /></AppLayout></ProtectedRoute>} />
-      <Route path="/documents" element={<ProtectedRoute><AppLayout><Documents /></AppLayout></ProtectedRoute>} />
-      <Route path="/risk/:vendorId" element={<ProtectedRoute><AppLayout><RiskQuestionnaire /></AppLayout></ProtectedRoute>} />
-      <Route path="/ai-insights" element={<ProtectedRoute><AppLayout><AIInsights /></AppLayout></ProtectedRoute>} />
-      <Route path="/supply-chain" element={<ProtectedRoute><AppLayout><SupplyChainPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/compliance" element={<ProtectedRoute><AppLayout><CompliancePage /></AppLayout></ProtectedRoute>} />
-      <Route path="/renewals" element={<ProtectedRoute><AppLayout><RenewalsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><AppLayout><SettingsPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/portal/dashboard" element={<ProtectedRoute vendorOk><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
+      <Route path="/dashboard" element={<P><Dashboard /></P>} />
+      <Route path="/vendors" element={<P><Vendors /></P>} />
+      <Route path="/vendors/new" element={<P><AddVendor /></P>} />
+      <Route path="/vendors/:id" element={<P><VendorDetail /></P>} />
+      <Route path="/findings" element={<P><Findings /></P>} />
+      <Route path="/documents" element={<P><Documents /></P>} />
+      <Route path="/risk/:vendorId" element={<P><RiskQuestionnaire /></P>} />
+      <Route path="/ai-insights" element={<P><AIInsights /></P>} />
+      <Route path="/escalation" element={<P><Escalation /></P>} />
+      <Route path="/renewals" element={<P><Renewals /></P>} />
+      <Route path="/workflows" element={<P><Workflows /></P>} />
+      <Route path="/supply-chain" element={<P><SupplyChainPage /></P>} />
+      <Route path="/compliance" element={<P><CompliancePage /></P>} />
+      <Route path="/settings" element={<P><SettingsPage /></P>} />
+      <Route path="/portal/dashboard" element={<P vendorOk><Dashboard /></P>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
