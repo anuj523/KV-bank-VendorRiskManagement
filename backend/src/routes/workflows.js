@@ -9,6 +9,20 @@ const router = express.Router();
 // ============================================================
 
 // Get all workflows (optionally filtered)
+// Stats MUST come before /:id routes
+router.get('/stats/overview', auth, async (req, res) => {
+  try {
+    const [active, byType, recentCompleted] = await Promise.all([
+      query(`SELECT workflow_type, COUNT(*) as count FROM workflows WHERE status = 'in_progress' GROUP BY workflow_type`),
+      query(`SELECT workflow_type, status, COUNT(*) as count FROM workflows GROUP BY workflow_type, status`),
+      query(`SELECT w.*, v.name as vendor_name FROM workflows w JOIN vendors v ON w.vendor_id = v.id WHERE w.status = 'completed' ORDER BY w.completed_at DESC LIMIT 5`)
+    ]);
+    res.json({ active_workflows: active.rows, by_type: byType.rows, recent_completed: recentCompleted.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/', auth, async (req, res) => {
   const { vendor_id, workflow_type, status } = req.query;
   let conditions = [], params = [], pi = 1;
@@ -253,19 +267,7 @@ router.post('/approve/:vendorId', auth, async (req, res) => {
   }
 });
 
-// Get workflow dashboard stats
-router.get('/stats/overview', auth, async (req, res) => {
-  try {
-    const [active, byType, recentCompleted] = await Promise.all([
-      query(`SELECT workflow_type, COUNT(*) as count FROM workflows WHERE status = 'in_progress' GROUP BY workflow_type`),
-      query(`SELECT workflow_type, status, COUNT(*) as count FROM workflows GROUP BY workflow_type, status`),
-      query(`SELECT w.*, v.name as vendor_name FROM workflows w JOIN vendors v ON w.vendor_id = v.id WHERE w.status = 'completed' ORDER BY w.completed_at DESC LIMIT 5`)
-    ]);
-    res.json({ active_workflows: active.rows, by_type: byType.rows, recent_completed: recentCompleted.rows });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+
 
 // Helpers
 function getInitialStage(type) {
