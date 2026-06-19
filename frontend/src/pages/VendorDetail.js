@@ -328,14 +328,98 @@ function DocumentsTab({ vendor, onRefresh }) {
   );
 }
 
-// Row must be outside OverviewTab to prevent cursor jumping on re-render
-function VendorRow({ label, editing, displayValue, children }) {
-  return (
+// VendorEditForm — uses refs instead of controlled state to completely eliminate cursor jumping
+function VendorEditForm({ vendor, onSave, onCancel, saving }) {
+  const refs = {
+    contact_person: React.useRef(),
+    email: React.useRef(),
+    contact_phone: React.useRef(),
+    incorporation_country: React.useRef(),
+    employee_count: React.useRef(),
+    years_in_operation: React.useRef(),
+    annual_revenue: React.useRef(),
+    service_description: React.useRef(),
+    category: React.useRef(),
+    criticality: React.useRef(),
+    health_status: React.useRef(),
+    contract_start_date: React.useRef(),
+    contract_end_date: React.useRef(),
+    contract_value: React.useRef(),
+    auto_renewal: React.useRef(),
+  };
+
+  const handleSubmit = () => {
+    const data = {};
+    Object.keys(refs).forEach(k => {
+      if (!refs[k].current) return;
+      if (k === 'auto_renewal') data[k] = refs[k].current.checked;
+      else data[k] = refs[k].current.value;
+    });
+    onSave(data);
+  };
+
+  const inp = "glass-input text-sm py-1 px-2 flex-1";
+  const row = (label, children) => (
     <div className="flex items-start justify-between py-2.5 border-b border-white/5 gap-4">
       <span className="text-sm flex-shrink-0" style={{ color: 'var(--text-muted)', minWidth: 150 }}>{label}</span>
-      {editing ? children : (
-        <span className="text-sm text-white font-medium text-right">{displayValue}</span>
+      {children}
+    </div>
+  );
+
+  return (
+    <div className="space-y-0">
+      {row("Contact Person", <input ref={refs.contact_person} className={inp} defaultValue={vendor.contact_person || ''} placeholder="Enter name" />)}
+      {row("Email", <input ref={refs.email} className={inp} type="email" defaultValue={vendor.email || ''} placeholder="Enter email" />)}
+      {row("Phone", <input ref={refs.contact_phone} className={inp} defaultValue={vendor.contact_phone || ''} placeholder="Enter phone" />)}
+      {row("Country", <input ref={refs.incorporation_country} className={inp} defaultValue={vendor.incorporation_country || ''} placeholder="Enter country" />)}
+      {row("Employees", <input ref={refs.employee_count} className={inp} type="number" defaultValue={vendor.employee_count || ''} placeholder="Number of employees" />)}
+      {row("Years Operating", <input ref={refs.years_in_operation} className={inp} type="number" defaultValue={vendor.years_in_operation || ''} placeholder="Years in business" />)}
+      {row("Annual Revenue (₹)", <input ref={refs.annual_revenue} className={inp} type="number" defaultValue={vendor.annual_revenue || ''} placeholder="Revenue in ₹" />)}
+      {row("Category",
+        <select ref={refs.category} className={inp} defaultValue={vendor.category || ''}>
+          <option value="">— select —</option>
+          <option value="technology_cloud">Technology & Cloud</option>
+          <option value="it_products_software">IT Products & Software</option>
+          <option value="financial_fintech">Financial & Fintech</option>
+          <option value="outsourcing_data">Outsourcing & Data</option>
+          <option value="professional_services">Professional Services</option>
+          <option value="facilities_operations">Facilities & Operations</option>
+        </select>
       )}
+      {row("Criticality",
+        <select ref={refs.criticality} className={inp} defaultValue={vendor.criticality || ''}>
+          <option value="">— select —</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      )}
+      {row("Health Status",
+        <select ref={refs.health_status} className={inp} defaultValue={vendor.health_status || 'green'}>
+          <option value="green">Green ✅</option>
+          <option value="amber">Amber ⚠️</option>
+          <option value="red">Red 🔴</option>
+        </select>
+      )}
+      <div className="py-2.5 border-b border-white/5">
+        <div className="text-sm mb-1.5" style={{ color: 'var(--text-muted)' }}>Service Description</div>
+        <textarea ref={refs.service_description} className="glass-input resize-none h-20 text-sm w-full"
+          defaultValue={vendor.service_description || ''} placeholder="Describe services provided to KVB..." />
+      </div>
+      <div className="pt-3 border-b border-white/5 pb-3">
+        <div className="text-sm mb-2 font-medium text-white">Contract Details</div>
+        {row("Contract Start", <input ref={refs.contract_start_date} className={inp} type="date" defaultValue={vendor.contract_start_date ? vendor.contract_start_date.split('T')[0] : ''} />)}
+        {row("Contract End", <input ref={refs.contract_end_date} className={inp} type="date" defaultValue={vendor.contract_end_date ? vendor.contract_end_date.split('T')[0] : ''} />)}
+        {row("Contract Value (₹)", <input ref={refs.contract_value} className={inp} type="number" defaultValue={vendor.contract_value || ''} placeholder="Enter value" />)}
+        {row("Auto Renewal", <input ref={refs.auto_renewal} type="checkbox" defaultChecked={vendor.auto_renewal || false} className="w-4 h-4 accent-sky-500 mt-1" />)}
+      </div>
+      <div className="flex gap-3 pt-4">
+        <button onClick={handleSubmit} disabled={saving} className="btn-primary flex items-center gap-2 text-sm">
+          {saving ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : '✓'}
+          Save Changes
+        </button>
+        <button onClick={onCancel} className="btn-glass text-sm">Cancel</button>
+      </div>
     </div>
   );
 }
@@ -344,60 +428,32 @@ function OverviewTab({ vendor, score, onRefresh }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const buildForm = (v) => ({
-    contact_person: v.contact_person || '',
-    email: v.email || '',
-    contact_phone: v.contact_phone || '',
-    incorporation_country: v.incorporation_country || '',
-    employee_count: v.employee_count || '',
-    years_in_operation: v.years_in_operation || '',
-    annual_revenue: v.annual_revenue || '',
-    service_description: v.service_description || '',
-    category: v.category || '',
-    criticality: v.criticality || '',
-    health_status: v.health_status || 'green',
-    contract_start_date: v.contract_start_date ? v.contract_start_date.split('T')[0] : '',
-    contract_end_date: v.contract_end_date ? v.contract_end_date.split('T')[0] : '',
-    contract_value: v.contract_value || '',
-    auto_renewal: v.auto_renewal || false,
-  });
+  const fmt = (val, field) => {
+    if (!val) return '—';
+    if (field === 'auto_renewal') return val ? 'Yes' : 'No';
+    if (field === 'contract_value') return `₹${Number(val).toLocaleString('en-IN')}`;
+    if (field === 'contract_start_date' || field === 'contract_end_date') return new Date(val).toLocaleDateString('en-IN');
+    if (field === 'category') return val.replace(/_/g, ' ');
+    return val;
+  };
 
-  const [form, setForm] = useState(() => buildForm(vendor));
+  const Row = ({ label, field }) => (
+    <div className="flex items-start justify-between py-2.5 border-b border-white/5 gap-4">
+      <span className="text-sm flex-shrink-0" style={{ color: 'var(--text-muted)', minWidth: 150 }}>{label}</span>
+      <span className="text-sm text-white font-medium text-right">{fmt(vendor[field], field) || '—'}</span>
+    </div>
+  );
 
-  // Sync form when vendor data changes (e.g. after save + refresh)
-  useEffect(() => {
-    if (!editing) {
-      setForm(buildForm(vendor));
-    }
-  // eslint-disable-next-line
-  }, [vendor, editing]);
-
-  const handleSave = async () => {
+  const handleSave = async (data) => {
     setSaving(true);
     try {
-      const updated = await api.put(`/vendors/${vendor.id}`, form);
+      await api.put(`/vendors/${vendor.id}`, data);
       setEditing(false);
-      // Update form immediately with returned data so display is instant
-      if (updated && updated.id) {
-        setForm(buildForm(updated));
-      }
       onRefresh();
     } catch (err) {
       alert('Save failed: ' + err.message);
     } finally { setSaving(false); }
   };
-
-  const displayVal = (field) => {
-    // Use form values for display (they're always in sync with latest saved data)
-    const val = form[field];
-    if (field === 'auto_renewal') return val ? 'Yes' : 'No';
-    if (field === 'contract_value') return val ? `₹${Number(val).toLocaleString('en-IN')}` : '—';
-    if (field === 'contract_start_date' || field === 'contract_end_date') return val ? new Date(val).toLocaleDateString('en-IN') : '—';
-    if (field === 'category') return val ? val.replace(/_/g, ' ') : '—';
-    return val || '—';
-  };
-
-
 
   return (
     <div className="grid md:grid-cols-2 gap-4">
@@ -405,86 +461,38 @@ function OverviewTab({ vendor, score, onRefresh }) {
       <div className="glass-card-flat p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-display font-semibold text-white">Vendor Details</h3>
-          {!editing ? (
+          {!editing && (
             <button onClick={() => setEditing(true)} className="btn-glass text-xs py-1.5 px-3">✏️ Edit</button>
-          ) : (
-            <div className="flex gap-2">
-              <button onClick={handleSave} disabled={saving} className="btn-primary text-xs py-1.5 px-3">{saving ? 'Saving...' : '✓ Save'}</button>
-              <button onClick={() => setEditing(false)} className="btn-glass text-xs py-1.5 px-3">Cancel</button>
+          )}
+        </div>
+
+        {editing ? (
+          <VendorEditForm
+            vendor={vendor}
+            onSave={handleSave}
+            onCancel={() => setEditing(false)}
+            saving={saving}
+          />
+        ) : (
+          <div>
+            <Row label="Contact Person" field="contact_person" />
+            <Row label="Email" field="email" />
+            <Row label="Phone" field="contact_phone" />
+            <Row label="Country" field="incorporation_country" />
+            <Row label="Employees" field="employee_count" />
+            <Row label="Years Operating" field="years_in_operation" />
+            <Row label="Annual Revenue (₹)" field="annual_revenue" />
+            <Row label="Category" field="category" />
+            <Row label="Criticality" field="criticality" />
+            <Row label="Health Status" field="health_status" />
+            <div className="py-2.5">
+              <div className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>Service Description</div>
+              <p className="text-sm" style={{ color: vendor.service_description ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+                {vendor.service_description || '—'}
+              </p>
             </div>
-          )}
-        </div>
-
-        <VendorRow label="Contact Person" editing={editing} displayValue={displayVal("contact_person")}>
-          <input className="glass-input text-sm py-1 px-2 flex-1" value={form.contact_person}
-            onChange={e => setForm(p => ({ ...p, contact_person: e.target.value }))} placeholder="Enter name" />
-        </VendorRow>
-        <VendorRow label="Email" editing={editing} displayValue={displayVal("email")}>
-          <input className="glass-input text-sm py-1 px-2 flex-1" type="email" value={form.email}
-            onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="Enter email" />
-        </VendorRow>
-        <VendorRow label="Phone" editing={editing} displayValue={displayVal("contact_phone")}>
-          <input className="glass-input text-sm py-1 px-2 flex-1" value={form.contact_phone}
-            onChange={e => setForm(p => ({ ...p, contact_phone: e.target.value }))} placeholder="Enter phone" />
-        </VendorRow>
-        <VendorRow label="Country" editing={editing} displayValue={displayVal("incorporation_country")}>
-          <input className="glass-input text-sm py-1 px-2 flex-1" value={form.incorporation_country}
-            onChange={e => setForm(p => ({ ...p, incorporation_country: e.target.value }))} placeholder="Enter country" />
-        </VendorRow>
-        <VendorRow label="Employees" editing={editing} displayValue={displayVal("employee_count")}>
-          <input className="glass-input text-sm py-1 px-2 flex-1" type="number" value={form.employee_count}
-            onChange={e => setForm(p => ({ ...p, employee_count: e.target.value }))} placeholder="Number of employees" />
-        </VendorRow>
-        <VendorRow label="Years Operating" editing={editing} displayValue={displayVal("years_in_operation")}>
-          <input className="glass-input text-sm py-1 px-2 flex-1" type="number" value={form.years_in_operation}
-            onChange={e => setForm(p => ({ ...p, years_in_operation: e.target.value }))} placeholder="Years in business" />
-        </VendorRow>
-        <VendorRow label="Annual Revenue (₹)" editing={editing} displayValue={displayVal("annual_revenue")}>
-          <input className="glass-input text-sm py-1 px-2 flex-1" type="number" value={form.annual_revenue}
-            onChange={e => setForm(p => ({ ...p, annual_revenue: e.target.value }))} placeholder="Revenue in ₹" />
-        </VendorRow>
-        <VendorRow label="Category" editing={editing} displayValue={displayVal("category")}>
-          <select className="glass-input text-sm py-1 px-2 flex-1" value={form.category}
-            onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
-            <option value="">— select —</option>
-            <option value="technology_cloud">Technology & Cloud</option>
-            <option value="it_products_software">IT Products & Software</option>
-            <option value="financial_fintech">Financial & Fintech</option>
-            <option value="outsourcing_data">Outsourcing & Data</option>
-            <option value="professional_services">Professional Services</option>
-            <option value="facilities_operations">Facilities & Operations</option>
-          </select>
-        </VendorRow>
-        <VendorRow label="Criticality" editing={editing} displayValue={displayVal("criticality")}>
-          <select className="glass-input text-sm py-1 px-2 flex-1" value={form.criticality}
-            onChange={e => setForm(p => ({ ...p, criticality: e.target.value }))}>
-            <option value="">— select —</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </VendorRow>
-        <VendorRow label="Health Status" editing={editing} displayValue={displayVal("health_status")}>
-          <select className="glass-input text-sm py-1 px-2 flex-1" value={form.health_status}
-            onChange={e => setForm(p => ({ ...p, health_status: e.target.value }))}>
-            <option value="green">Green ✅</option>
-            <option value="amber">Amber ⚠️</option>
-            <option value="red">Red 🔴</option>
-          </select>
-        </VendorRow>
-
-        <div className="py-2.5 border-b border-white/5">
-          <div className="text-sm mb-1.5" style={{ color: 'var(--text-muted)' }}>Service Description</div>
-          {editing ? (
-            <textarea className="glass-input resize-none h-20 text-sm w-full" value={form.service_description}
-              onChange={e => setForm(p => ({ ...p, service_description: e.target.value }))}
-              placeholder="Describe services provided to KVB..." />
-          ) : (
-            <p className="text-sm" style={{ color: vendor.service_description ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
-              {vendor.service_description || '—'}
-            </p>
-          )}
-        </div>
+          </div>
+        )}
 
         <CreatePortalUser vendorId={vendor.id} vendorName={vendor.name} />
       </div>
@@ -506,26 +514,25 @@ function OverviewTab({ vendor, score, onRefresh }) {
           </div>
         )}
 
-        <VendorRow label="Contract Start" editing={editing} displayValue={displayVal("contract_start_date")}>
-          <input className="glass-input text-sm py-1 px-2 flex-1" type="date" value={form.contract_start_date}
-            onChange={e => setForm(p => ({ ...p, contract_start_date: e.target.value }))} />
-        </VendorRow>
-        <VendorRow label="Contract End" editing={editing} displayValue={displayVal("contract_end_date")}>
-          <input className="glass-input text-sm py-1 px-2 flex-1" type="date" value={form.contract_end_date}
-            onChange={e => setForm(p => ({ ...p, contract_end_date: e.target.value }))} />
-        </VendorRow>
-        <VendorRow label="Contract Value (₹)" editing={editing} displayValue={displayVal("contract_value")}>
-          <input className="glass-input text-sm py-1 px-2 flex-1" type="number" value={form.contract_value}
-            onChange={e => setForm(p => ({ ...p, contract_value: e.target.value }))} placeholder="Enter value" />
-        </VendorRow>
-        <VendorRow label="Auto Renewal" editing={editing} displayValue={displayVal("auto_renewal")}>
-          <input type="checkbox" checked={form.auto_renewal}
-            onChange={e => setForm(p => ({ ...p, auto_renewal: e.target.checked }))}
-            className="w-4 h-4 accent-sky-500 mt-1" />
-        </VendorRow>
+        <div className="flex items-center justify-between py-2.5 border-b border-white/5">
+          <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 150 }}>Contract Start</span>
+          <span className="text-sm text-white">{vendor.contract_start_date ? new Date(vendor.contract_start_date).toLocaleDateString('en-IN') : '—'}</span>
+        </div>
+        <div className="flex items-center justify-between py-2.5 border-b border-white/5">
+          <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 150 }}>Contract End</span>
+          <span className="text-sm text-white">{vendor.contract_end_date ? new Date(vendor.contract_end_date).toLocaleDateString('en-IN') : '—'}</span>
+        </div>
+        <div className="flex items-center justify-between py-2.5 border-b border-white/5">
+          <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 150 }}>Contract Value (₹)</span>
+          <span className="text-sm text-white">{vendor.contract_value ? `₹${Number(vendor.contract_value).toLocaleString('en-IN')}` : '—'}</span>
+        </div>
+        <div className="flex items-center justify-between py-2.5 border-b border-white/5">
+          <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 150 }}>Auto Renewal</span>
+          <span className="text-sm text-white">{vendor.auto_renewal ? 'Yes' : 'No'}</span>
+        </div>
         <div className="flex items-center justify-between py-2.5 border-b border-white/5">
           <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 150 }}>Owner</span>
-          <span className="text-sm text-white font-medium">{vendor.owner_name || '—'}</span>
+          <span className="text-sm text-white">{vendor.owner_name || '—'}</span>
         </div>
         <div className="flex items-center justify-between py-2.5 border-b border-white/5">
           <span className="text-sm" style={{ color: 'var(--text-muted)', minWidth: 150 }}>Status</span>
