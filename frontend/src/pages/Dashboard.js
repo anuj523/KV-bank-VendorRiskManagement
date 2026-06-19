@@ -29,7 +29,7 @@ function StatCard({ icon: Icon, label, value, sub, color, to }) {
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, isVendor } = useAuth();
   const [stats, setStats] = useState(null);
   const [findingStats, setFindingStats] = useState(null);
   const [docStats, setDocStats] = useState(null);
@@ -84,12 +84,14 @@ export default function Dashboard() {
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
-        <div className="flex gap-3">
-          <Link to="/vendors/new" className="btn-primary flex items-center gap-2">
-            <Building2 size={15} />
-            Add Vendor
-          </Link>
-        </div>
+        {!isVendor && (
+          <div className="flex gap-3">
+            <Link to="/vendors/new" className="btn-primary flex items-center gap-2">
+              <Building2 size={15} />
+              Add Vendor
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Stat cards */}

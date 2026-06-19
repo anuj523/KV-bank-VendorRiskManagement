@@ -24,7 +24,8 @@ const navItems = [
 const vendorNavItems = [
   { path: '/portal/dashboard', label: 'My Dashboard', icon: LayoutDashboard },
   { path: '/portal/questionnaire', label: 'Questionnaire', icon: FileCheck },
-  { path: '/portal/documents', label: 'Documents', icon: Package },
+  { path: '/portal/risk-scores', label: 'My Risk Score', icon: TrendingUp },
+  { path: '/portal/documents', label: 'My Documents', icon: Package },
   { path: '/portal/findings', label: 'My Findings', icon: AlertTriangle },
 ];
 

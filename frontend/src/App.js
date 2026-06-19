@@ -15,6 +15,7 @@ import Escalation from './pages/Escalation';
 import Renewals from './pages/Renewals';
 import Workflows from './pages/Workflows';
 import { SupplyChainPage, CompliancePage, SettingsPage } from './pages/Placeholders';
+import { VendorQuestionnaire, VendorDocuments, VendorFindings, VendorRiskScores } from './pages/VendorPortal';
 
 function ProtectedRoute({ children, vendorOk }) {
   const { user, loading } = useAuth();
@@ -38,6 +39,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Navigate to={user?.type === 'vendor' ? '/portal/dashboard' : '/dashboard'} replace />} />
+
+      {/* Internal KVB Staff routes */}
       <Route path="/dashboard" element={<P><Dashboard /></P>} />
       <Route path="/vendors" element={<P><Vendors /></P>} />
       <Route path="/vendors/new" element={<P><AddVendor /></P>} />
@@ -52,7 +55,14 @@ function AppRoutes() {
       <Route path="/supply-chain" element={<P><SupplyChainPage /></P>} />
       <Route path="/compliance" element={<P><CompliancePage /></P>} />
       <Route path="/settings" element={<P><SettingsPage /></P>} />
+
+      {/* Vendor Portal routes */}
       <Route path="/portal/dashboard" element={<P vendorOk><Dashboard /></P>} />
+      <Route path="/portal/questionnaire" element={<P vendorOk><VendorQuestionnaire /></P>} />
+      <Route path="/portal/risk-scores" element={<P vendorOk><VendorRiskScores /></P>} />
+      <Route path="/portal/documents" element={<P vendorOk><VendorDocuments /></P>} />
+      <Route path="/portal/findings" element={<P vendorOk><VendorFindings /></P>} />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
