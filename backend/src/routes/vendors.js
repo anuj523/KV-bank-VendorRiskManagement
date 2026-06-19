@@ -98,8 +98,27 @@ router.put('/:id', auth, async (req, res) => {
     'contract_start_date','contract_end_date','contract_value','auto_renewal',
     'owner_id','incorporation_country','years_in_operation','employee_count','annual_revenue'];
 
+  const intFields = ['employee_count', 'years_in_operation'];
+  const floatFields = ['contract_value', 'annual_revenue'];
+  const boolFields = ['auto_renewal'];
+
   const updates = {};
-  allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
+  allowed.forEach(k => {
+    if (req.body[k] === undefined) return;
+    const val = req.body[k];
+    // Convert empty strings to null so PostgreSQL doesn't fail type checks
+    if (val === '' || val === null) {
+      updates[k] = null;
+    } else if (intFields.includes(k)) {
+      updates[k] = parseInt(val) || null;
+    } else if (floatFields.includes(k)) {
+      updates[k] = parseFloat(val) || null;
+    } else if (boolFields.includes(k)) {
+      updates[k] = val === true || val === 'true';
+    } else {
+      updates[k] = val;
+    }
+  });
 
   if (!Object.keys(updates).length) return res.status(400).json({ error: 'Nothing to update' });
 
