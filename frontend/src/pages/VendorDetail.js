@@ -499,7 +499,12 @@ function OverviewTab({ vendor, score, onRefresh }) {
 
       {/* Contract & Risk Card */}
       <div className="glass-card-flat p-6">
-        <h3 className="font-display font-semibold text-white mb-4">Contract & Risk</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display font-semibold text-white">Contract & Risk</h3>
+          {!editing && (
+            <button onClick={() => setEditing(true)} className="btn-glass text-xs py-1.5 px-3">✏️ Edit</button>
+          )}
+        </div>
 
         {score ? (
           <div className="p-4 rounded-xl mb-4" style={{ background: 'rgba(74,159,212,0.08)', border: '1px solid rgba(74,159,212,0.15)' }}>
@@ -796,10 +801,26 @@ export default function VendorDetail() {
           ) : (
             <div className="text-center py-12" style={{ color: 'var(--text-muted)' }}>No risk scores yet. Complete the questionnaire to generate scores.</div>
           )}
-          <div className="mt-6">
+          <div className="mt-6 flex gap-3 flex-wrap">
             <Link to={`/risk/${id}`} className="btn-primary inline-flex items-center gap-2">
-              <TrendingUp size={15} /> Open Questionnaire
+              <TrendingUp size={15} /> {score ? 'Redo Questionnaire' : 'Open Questionnaire'}
             </Link>
+            {score && user?.role === 'system_administrator' && (
+              <button
+                onClick={async () => {
+                  if (!window.confirm('This will permanently delete all questionnaire answers, risk scores and auto-raised findings for this vendor. Continue?')) return;
+                  try {
+                    await api.delete(`/risk/${id}/reset`);
+                    alert('Reset complete. Please redo the questionnaire.');
+                    loadVendor();
+                  } catch (err) { alert('Reset failed: ' + err.message); }
+                }}
+                className="btn-glass text-sm flex items-center gap-2"
+                style={{ color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }}
+              >
+                🔄 Reset & Redo
+              </button>
+            )}
           </div>
         </div>
       )}
