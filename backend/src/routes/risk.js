@@ -29,8 +29,43 @@ router.get('/:vendorId/questionnaire', auth, async (req, res) => {
 
 // Submit / update questionnaire responses
 router.post('/:vendorId/questionnaire', auth, async (req, res) => {
-  const { responses } = req.body; // Array of { question_key, domain, question_text, answer, notes, is_regulatory_tagged, regulatory_ref }
+  if (req.user.type === 'vendor' && req.user.vendor_id !== req.params.vendorId) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  const { responses } = req.body;
   const { vendorId } = req.params;
+
+  // Backend validation 1: must have responses
+  if (!responses || !Array.isArray(responses) || responses.length === 0) {
+    return res.status(400).json({ error: 'No responses provided' });
+  }
+
+  // Backend validation 2: every response must have a valid answer
+  const validAnswers = ['compliant', 'partially_compliant', 'non_compliant', 'na'];
+  const unanswered = responses.filter(r => !r.answer || !validAnswers.includes(r.answer));
+  if (unanswered.length > 0) {
+    return res.status(400).json({
+      error: `All questions must be answered before submitting. ${unanswered.length} question(s) have no valid answer.`,
+      unanswered_keys: unanswered.map(r => r.question_key)
+    });
+  }
+
+  // Backend validation 3: count must match expected questionnaire length for this vendor's category
+  try {
+    const vendorCheck = await query('SELECT category FROM vendors WHERE id = $1', [vendorId]);
+    if (vendorCheck.rows.length && vendorCheck.rows[0].category) {
+      const expected = buildQuestionnaire(vendorCheck.rows[0].category);
+      if (expected.length > 0 && responses.length < expected.length) {
+        return res.status(400).json({
+          error: `Incomplete questionnaire. Expected ${expected.length} answers, received ${responses.length}. All questions must be answered.`,
+          expected: expected.length,
+          received: responses.length
+        });
+      }
+    }
+  } catch (checkErr) {
+    console.error('Questionnaire completeness check failed (non-blocking):', checkErr.message);
+  }
 
   try {
     for (const r of responses) {
