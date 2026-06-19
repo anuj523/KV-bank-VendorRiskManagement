@@ -33,6 +33,10 @@ const upload = multer({
 
 // Get documents for a vendor
 router.get('/vendor/:vendorId', auth, async (req, res) => {
+  // Vendor users can only see their own documents
+  if (req.user.type === 'vendor' && req.user.vendor_id !== req.params.vendorId) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
   try {
     const result = await query(
       'SELECT * FROM documents WHERE vendor_id = $1 ORDER BY created_at DESC',
@@ -114,6 +118,9 @@ router.patch('/:id/review', auth, async (req, res) => {
 
 // Document expiry dashboard
 router.get('/expiry/summary', auth, async (req, res) => {
+  if (req.user.type === 'vendor') {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
   try {
     const [expiring30, expired, pending] = await Promise.all([
       query(`SELECT d.*, v.name as vendor_name FROM documents d JOIN vendors v ON d.vendor_id = v.id 

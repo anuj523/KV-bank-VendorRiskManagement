@@ -26,6 +26,7 @@ async function callClaude(prompt, systemPrompt) {
 
 // Generate risk summary for a vendor
 router.post('/risk-summary/:vendorId', auth, async (req, res) => {
+  if (req.user.type === 'vendor') return res.status(403).json({ error: 'Not authorized' });
   try {
     const [vendor, scores, findings, docs] = await Promise.all([
       query('SELECT * FROM vendors WHERE id = $1', [req.params.vendorId]),
@@ -265,6 +266,7 @@ router.patch('/analyses/:id/review', auth, async (req, res) => {
 
 // Get AI analyses for a vendor
 router.get('/analyses/:vendorId', auth, async (req, res) => {
+  if (req.user.type === 'vendor') return res.status(403).json({ error: 'Not authorized' });
   try {
     const result = await query(
       'SELECT * FROM ai_analyses WHERE vendor_id = $1 OR vendor_id IS NULL ORDER BY created_at DESC LIMIT 20',

@@ -6,6 +6,10 @@ const router = express.Router();
 
 // Get questionnaire for a vendor
 router.get('/:vendorId/questionnaire', auth, async (req, res) => {
+  // Vendor users can only access their own questionnaire
+  if (req.user.type === 'vendor' && req.user.vendor_id !== req.params.vendorId) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
   try {
     const vendor = await query('SELECT * FROM vendors WHERE id = $1', [req.params.vendorId]);
     if (!vendor.rows.length) return res.status(404).json({ error: 'Vendor not found' });
@@ -73,6 +77,9 @@ router.post('/:vendorId/questionnaire', auth, async (req, res) => {
 
 // Get risk scores history
 router.get('/:vendorId/scores', auth, async (req, res) => {
+  if (req.user.type === 'vendor' && req.user.vendor_id !== req.params.vendorId) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
   try {
     const result = await query(
       'SELECT * FROM risk_scores WHERE vendor_id = $1 ORDER BY scored_at DESC LIMIT 10',

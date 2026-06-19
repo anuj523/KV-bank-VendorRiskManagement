@@ -6,6 +6,10 @@ const router = express.Router();
 
 // Get all findings (optionally filtered)
 router.get('/', auth, async (req, res) => {
+  // Vendor portal users can only see their own findings
+  if (req.user.type === 'vendor') {
+    req.query.vendor_id = req.user.vendor_id;
+  }
   const { vendor_id, status, severity, domain, page = 1, limit = 50 } = req.query;
   const offset = (page - 1) * limit;
   let conditions = [];
@@ -101,6 +105,9 @@ router.patch('/:id', auth, async (req, res) => {
 
 // Stats for dashboard
 router.get('/stats/summary', auth, async (req, res) => {
+  if (req.user.type === 'vendor') {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
   try {
     const [bySeverity, byStatus, overdue, recent] = await Promise.all([
       query(`SELECT severity, COUNT(*) as count FROM findings WHERE status != 'closed' GROUP BY severity`),

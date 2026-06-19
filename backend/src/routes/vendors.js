@@ -6,6 +6,10 @@ const router = express.Router();
 
 // List vendors with filters
 router.get('/', auth, async (req, res) => {
+  // Vendor portal users cannot list all vendors
+  if (req.user.type === 'vendor') {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
   const { status, category, criticality, health_status, search, page = 1, limit = 20 } = req.query;
   const offset = (page - 1) * limit;
   let conditions = [];
@@ -40,6 +44,10 @@ router.get('/', auth, async (req, res) => {
 
 // Get single vendor with full details
 router.get('/:id', auth, async (req, res) => {
+  // Vendor users can only access their own vendor record
+  if (req.user.type === 'vendor' && req.user.vendor_id !== req.params.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
   try {
     const [vendor, scores, findings, docs, subcontractors] = await Promise.all([
       query(`SELECT v.*, u.full_name as owner_name FROM vendors v LEFT JOIN users u ON v.owner_id = u.id WHERE v.id = $1`, [req.params.id]),
@@ -198,6 +206,10 @@ router.get('/:id/audit', auth, async (req, res) => {
 
 // Dashboard stats
 router.get('/stats/overview', auth, async (req, res) => {
+  // Vendor portal users: return only their own vendor stats
+  if (req.user.type === 'vendor') {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
   try {
     const [totals, byStatus, byCriticality, byHealth, byRisk] = await Promise.all([
       query('SELECT COUNT(*) as total FROM vendors WHERE status != $1', ['offboarded']),
