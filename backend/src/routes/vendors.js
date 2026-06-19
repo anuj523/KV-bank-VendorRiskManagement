@@ -250,16 +250,19 @@ router.delete('/:id', auth, async (req, res) => {
       [vendor.id, req.user.id, JSON.stringify({ name: vendor.name, status: vendor.status, deleted_by: req.user.email })]
     );
 
-    // Delete related records first (cascade)
+    // Nullify audit_trail references so history is preserved but FK constraint is released
+    await query(`UPDATE audit_trail SET vendor_id = NULL WHERE vendor_id = $1`, [vendor.id]);
+
+    // Delete related records in correct FK order
+    await query('DELETE FROM ai_analyses WHERE vendor_id = $1', [vendor.id]);
+    await query('DELETE FROM risk_scores WHERE vendor_id = $1', [vendor.id]);
     await query('DELETE FROM questionnaire_responses WHERE vendor_id = $1', [vendor.id]);
     await query('DELETE FROM documents WHERE vendor_id = $1', [vendor.id]);
     await query('DELETE FROM findings WHERE vendor_id = $1', [vendor.id]);
     await query('DELETE FROM workflows WHERE vendor_id = $1', [vendor.id]);
     await query('DELETE FROM notifications WHERE vendor_id = $1', [vendor.id]);
-    await query('DELETE FROM vendor_users WHERE vendor_id = $1', [vendor.id]);
     await query('DELETE FROM subcontractors WHERE vendor_id = $1', [vendor.id]);
-    await query('DELETE FROM risk_scores WHERE vendor_id = $1', [vendor.id]);
-    await query('DELETE FROM ai_analyses WHERE vendor_id = $1', [vendor.id]);
+    await query('DELETE FROM vendor_users WHERE vendor_id = $1', [vendor.id]);
     await query('DELETE FROM vendors WHERE id = $1', [vendor.id]);
 
     res.json({ success: true, message: `Vendor "${vendor.name}" has been permanently deleted.` });
