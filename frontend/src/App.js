@@ -16,6 +16,7 @@ import Renewals from './pages/Renewals';
 import Workflows from './pages/Workflows';
 import { SupplyChainPage, CompliancePage, SettingsPage } from './pages/Placeholders';
 import { VendorQuestionnaire, VendorDocuments, VendorFindings, VendorRiskScores } from './pages/VendorPortal';
+import VendorDashboard from './pages/VendorDashboard';
 
 function ProtectedRoute({ children, vendorOk }) {
   const { user, loading } = useAuth();
@@ -57,7 +58,7 @@ function AppRoutes() {
       <Route path="/settings" element={<P><SettingsPage /></P>} />
 
       {/* Vendor Portal routes */}
-      <Route path="/portal/dashboard" element={<P vendorOk><Dashboard /></P>} />
+      <Route path="/portal/dashboard" element={<P vendorOk><VendorDashboard /></P>} />
       <Route path="/portal/questionnaire" element={<P vendorOk><VendorQuestionnaire /></P>} />
       <Route path="/portal/risk-scores" element={<P vendorOk><VendorRiskScores /></P>} />
       <Route path="/portal/documents" element={<P vendorOk><VendorDocuments /></P>} />
