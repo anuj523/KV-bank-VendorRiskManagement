@@ -226,4 +226,47 @@ function autoClassify(description) {
   return best;
 }
 
+// Delete vendor (soft delete — admin only, restricted to intake/rejected status)
+router.delete('/:id', auth, async (req, res) => {
+  if (req.user.role !== 'system_administrator') {
+    return res.status(403).json({ error: 'Only System Administrators can delete vendors' });
+  }
+  try {
+    const result = await query('SELECT * FROM vendors WHERE id = $1', [req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ error: 'Vendor not found' });
+    
+    const vendor = result.rows[0];
+    const deletableStatuses = ['intake_received', 'rejected'];
+    if (!deletableStatuses.includes(vendor.status)) {
+      return res.status(400).json({ 
+        error: `Cannot delete vendor with status "${vendor.status}". Only vendors in Intake or Rejected status can be deleted. To remove an active vendor, use the Offboarding workflow.`
+      });
+    }
+
+    // Log before deleting
+    await query(
+      `INSERT INTO audit_trail (vendor_id, user_id, action, entity_type, entity_id, old_value)
+       VALUES ($1, $2, 'vendor_deleted', 'vendor', $1, $3)`,
+      [vendor.id, req.user.id, JSON.stringify({ name: vendor.name, status: vendor.status, deleted_by: req.user.email })]
+    );
+
+    // Delete related records first (cascade)
+    await query('DELETE FROM questionnaire_responses WHERE vendor_id = $1', [vendor.id]);
+    await query('DELETE FROM documents WHERE vendor_id = $1', [vendor.id]);
+    await query('DELETE FROM findings WHERE vendor_id = $1', [vendor.id]);
+    await query('DELETE FROM workflows WHERE vendor_id = $1', [vendor.id]);
+    await query('DELETE FROM notifications WHERE vendor_id = $1', [vendor.id]);
+    await query('DELETE FROM vendor_users WHERE vendor_id = $1', [vendor.id]);
+    await query('DELETE FROM subcontractors WHERE vendor_id = $1', [vendor.id]);
+    await query('DELETE FROM risk_scores WHERE vendor_id = $1', [vendor.id]);
+    await query('DELETE FROM ai_analyses WHERE vendor_id = $1', [vendor.id]);
+    await query('DELETE FROM vendors WHERE id = $1', [vendor.id]);
+
+    res.json({ success: true, message: `Vendor "${vendor.name}" has been permanently deleted.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

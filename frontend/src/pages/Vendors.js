@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Filter, ChevronRight, Building2 } from 'lucide-react';
+import { Plus, Search, ChevronRight, Building2, Trash2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 
 const CATEGORY_LABELS = {
@@ -38,6 +39,7 @@ const HEALTH_DOT = { green: 'dot-green', amber: 'dot-amber', red: 'dot-red' };
 const CRIT_BADGE = { high: 'badge-red', medium: 'badge-amber', low: 'badge-green' };
 
 export default function Vendors() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [vendors, setVendors] = useState([]);
   const [total, setTotal] = useState(0);
@@ -67,6 +69,24 @@ export default function Vendors() {
   }, [page, filters, search]);
 
   useEffect(() => { fetchVendors(); }, [fetchVendors]);
+
+  const deleteVendor = async (vendor) => {
+    const deletable = ['intake_received', 'rejected'].includes(vendor.status);
+    if (!deletable) {
+      alert(`Cannot delete "${vendor.name}".\n\nOnly vendors in Intake or Rejected status can be deleted.\nTo remove this vendor, use the Offboarding workflow.`);
+      return;
+    }
+    const confirmed = window.confirm(
+      `⚠️ PERMANENT DELETE\n\nAre you sure you want to permanently delete:\n"${vendor.name}"\n\nThis cannot be undone. All questionnaire responses, documents and findings for this vendor will be removed.\n\nType OK to confirm.`
+    );
+    if (!confirmed) return;
+    try {
+      await api.delete(`/vendors/${vendor.id}`);
+      fetchVendors();
+    } catch (err) {
+      alert('Delete failed: ' + err.message);
+    }
+  };
 
   const setFilter = (key, val) => {
     setFilters(prev => ({ ...prev, [key]: val }));
@@ -183,9 +203,27 @@ export default function Vendors() {
                   </td>
                   <td style={{ color: 'var(--text-muted)' }}>{v.owner_name || '—'}</td>
                   <td>
-                    <Link to={`/vendors/${v.id}`} className="btn-glass py-1.5 px-3 flex items-center gap-1 text-xs">
-                      View <ChevronRight size={13} />
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link to={`/vendors/${v.id}`} className="btn-glass py-1.5 px-3 flex items-center gap-1 text-xs">
+                        View <ChevronRight size={13} />
+                      </Link>
+                      {user?.role === 'system_administrator' && (
+                        <button
+                          onClick={() => deleteVendor(v)}
+                          title={['intake_received','rejected'].includes(v.status) ? 'Delete vendor' : 'Cannot delete — use Offboarding workflow'}
+                          className="p-1.5 rounded-lg transition-all"
+                          style={{
+                            color: ['intake_received','rejected'].includes(v.status) ? '#f87171' : 'var(--text-muted)',
+                            opacity: ['intake_received','rejected'].includes(v.status) ? 1 : 0.3,
+                            cursor: ['intake_received','rejected'].includes(v.status) ? 'pointer' : 'not-allowed',
+                            border: '1px solid',
+                            borderColor: ['intake_received','rejected'].includes(v.status) ? 'rgba(248,113,113,0.25)' : 'transparent',
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

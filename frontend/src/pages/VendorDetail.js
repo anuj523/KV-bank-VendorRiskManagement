@@ -3,9 +3,10 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Building2, Shield, AlertTriangle, FileCheck,
   TrendingUp, Clock, Bot, Activity, CheckCircle,
-  Loader, Upload, X, Eye, Sparkles
+  Loader, Upload, X, Eye, Sparkles, Trash2
 } from 'lucide-react';
 import api from '../utils/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const STATUS_TRANSITIONS = {
   intake_received: ['under_classification'],
@@ -584,12 +585,29 @@ function CreatePortalUser({ vendorId, vendorName }) {
 export default function VendorDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [aiLoading, setAiLoading] = useState(null);
   const [aiResult, setAiResult] = useState(null);
   const [statusChanging, setStatusChanging] = useState(false);
+
+  const deleteVendor = async () => {
+    const deletable = ['intake_received', 'rejected'].includes(vendor?.status);
+    if (!deletable) {
+      alert(`Cannot delete this vendor.\n\nStatus "${vendor?.status}" is not deletable.\nOnly Intake or Rejected vendors can be deleted.\nFor active vendors, use the Offboarding workflow.`);
+      return;
+    }
+    const confirmed = window.confirm(`⚠️ PERMANENT DELETE\n\nDelete "${vendor?.name}" permanently?\n\nAll records including documents, findings, and questionnaire responses will be removed. This cannot be undone.`);
+    if (!confirmed) return;
+    try {
+      await api.delete(`/vendors/${id}`);
+      navigate('/vendors');
+    } catch (err) {
+      alert('Delete failed: ' + err.message);
+    }
+  };
 
   const loadVendor = () => {
     setLoading(true);
@@ -662,7 +680,15 @@ export default function VendorDetail() {
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{vendor.legal_name || ''} · {vendor.category?.replace(/_/g, ' ')}</p>
         </div>
         <div className="flex flex-col gap-2 items-end">
-          <span className="badge badge-blue">{vendor.status?.replace(/_/g, ' ')}</span>
+          <div className="flex items-center gap-2">
+            <span className="badge badge-blue">{vendor.status?.replace(/_/g, ' ')}</span>
+            {user?.role === 'system_administrator' && ['intake_received','rejected'].includes(vendor.status) && (
+              <button onClick={deleteVendor} title="Delete vendor permanently"
+                className="flex items-center gap-1.5 text-xs py-1 px-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all">
+                <Trash2 size={12} /> Delete
+              </button>
+            )}
+          </div>
           {nextStatuses.length > 0 && (
             <div className="flex gap-2 flex-wrap justify-end">
               {nextStatuses.map(s => (
