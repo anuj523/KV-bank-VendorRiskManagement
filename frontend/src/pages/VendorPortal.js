@@ -72,15 +72,33 @@ export function VendorQuestionnaire() {
   const progress = questions.length ? Math.round((Object.keys(responses).length / questions.length) * 100) : 0;
 
   const handleSave = async () => {
+    // Check all questions are answered
+    const unanswered = questions.filter(q => !responses[q.key]);
+    if (unanswered.length > 0) {
+      // Find which domains have unanswered questions
+      const domainsMissing = [...new Set(unanswered.map(q => q.domain))];
+      const DOMAIN_LABELS = {
+        cybersecurity: 'Cybersecurity', operational: 'Operational',
+        compliance_legal: 'Compliance & Legal', financial: 'Financial', reputational: 'Reputational'
+      };
+      alert(
+        `⚠️ All questions must be answered before saving.\n\n` +
+        `${unanswered.length} question${unanswered.length > 1 ? 's' : ''} unanswered in:\n` +
+        domainsMissing.map(d => `  • ${DOMAIN_LABELS[d] || d}`).join('\n') +
+        `\n\nPlease go through each domain tab and answer all questions.`
+      );
+      // Switch to first domain with unanswered questions
+      setActiveGroup(domainsMissing[0]);
+      return;
+    }
+
     setSaving(true);
     try {
-      const payload = questions
-        .filter(q => responses[q.key])
-        .map(q => ({
-          question_key: q.key, domain: q.domain, question_text: q.text,
-          answer: responses[q.key], notes: notes[q.key] || null,
-          is_regulatory_tagged: q.is_regulatory_tagged, regulatory_ref: q.regulatory_ref
-        }));
+      const payload = questions.map(q => ({
+        question_key: q.key, domain: q.domain, question_text: q.text,
+        answer: responses[q.key], notes: notes[q.key] || null,
+        is_regulatory_tagged: q.is_regulatory_tagged, regulatory_ref: q.regulatory_ref
+      }));
       await api.post(`/risk/${user.vendor_id}/questionnaire`, { responses: payload });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -141,10 +159,20 @@ export function VendorQuestionnaire() {
           </p>
         </div>
         <div className="text-right">
-          <div className="text-sm font-medium text-white">{progress}% complete</div>
-          <div className="w-32 h-1.5 rounded-full mt-1 overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
-            <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, background: 'linear-gradient(90deg,#4a9fd4,#0ea5a0)' }} />
+          <div className="text-sm font-medium" style={{ color: progress === 100 ? '#4ade80' : 'white' }}>
+            {progress === 100 ? '✓ All answered' : `${Object.keys(responses).length} / ${questions.length} answered`}
           </div>
+          <div className="w-32 h-2 rounded-full mt-1 overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+            <div className="h-full rounded-full transition-all" style={{
+              width: `${progress}%`,
+              background: progress === 100 ? '#4ade80' : 'linear-gradient(90deg,#4a9fd4,#0ea5a0)'
+            }} />
+          </div>
+          {progress < 100 && (
+            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              {questions.length - Object.keys(responses).length} remaining
+            </div>
+          )}
         </div>
       </div>
 
@@ -157,8 +185,8 @@ export function VendorQuestionnaire() {
             <button key={domain} onClick={() => setActiveGroup(domain)}
               className={`px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${activeGroup === domain ? 'bg-white/10 text-white border border-white/15' : 'text-white/50 hover:text-white/80'}`}>
               {DOMAIN_LABELS[domain] || domain}
-              <span className={`badge text-xs ${answered === qs.length ? 'badge-green' : answered > 0 ? 'badge-amber' : 'badge-gray'}`}>
-                {answered}/{qs.length}
+              <span className={`badge text-xs ${answered === qs.length ? 'badge-green' : answered > 0 ? 'badge-amber' : 'badge-red'}`}>
+                {answered === qs.length ? '✓' : `${answered}/${qs.length}`}
               </span>
             </button>
           );
@@ -201,12 +229,24 @@ export function VendorQuestionnaire() {
         </div>
       )}
 
-      <div className="flex gap-3">
-        <button onClick={handleSave} disabled={saving || progress === 0} className="btn-primary flex items-center gap-2">
-          {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckCircle size={15} />}
-          Save Responses
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="btn-primary flex items-center gap-2"
+          style={progress < 100 ? { opacity: 0.7 } : {}}
+        >
+          {saving
+            ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            : <CheckCircle size={15} />}
+          {progress === 100 ? 'Save & Score' : `Save (${questions.length - Object.keys(responses).length} unanswered)`}
         </button>
-        {saved && <span className="text-sm self-center" style={{ color: '#4ade80' }}>✓ Saved successfully</span>}
+        {saved && <span className="text-sm" style={{ color: '#4ade80' }}>✓ Saved & scored successfully</span>}
+        {progress < 100 && !saving && (
+          <span className="text-xs" style={{ color: '#fbbf24' }}>
+            ⚠ All {questions.length} questions must be answered
+          </span>
+        )}
       </div>
     </div>
   );

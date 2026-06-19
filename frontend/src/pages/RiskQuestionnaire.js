@@ -50,17 +50,31 @@ export default function RiskQuestionnaire() {
   const setNote = (key, val) => setNotes(prev => ({ ...prev, [key]: val }));
 
   const handleSave = async () => {
+    // Check all questions answered
+    const unanswered = questions.filter(q => !answers[q.key]);
+    if (unanswered.length > 0) {
+      const domainsMissing = [...new Set(unanswered.map(q => q.domain))];
+      alert(
+        `⚠️ All questions must be answered before saving.\n\n` +
+        `${unanswered.length} question${unanswered.length > 1 ? 's' : ''} unanswered in:\n` +
+        domainsMissing.map(d => `  • ${DOMAIN_LABELS[d] || d}`).join('\n') +
+        `\n\nPlease answer all questions.`
+      );
+      setActiveGroup(domainsMissing[0]);
+      return;
+    }
+
     setSaving(true);
     try {
       const responses = questions.map(q => ({
         question_key: q.key,
         domain: q.domain,
         question_text: q.text,
-        answer: answers[q.key] || null,
+        answer: answers[q.key],
         notes: notes[q.key] || null,
         is_regulatory_tagged: q.is_regulatory_tagged,
         regulatory_ref: q.regulatory_ref
-      })).filter(r => r.answer);
+      }));
 
       const result = await api.post(`/risk/${vendorId}/questionnaire`, { responses });
       alert(`Saved! Overall score: ${result.score?.overall?.toFixed(1)}%`);
@@ -181,9 +195,10 @@ export default function RiskQuestionnaire() {
       )}
 
       <div className="flex gap-3 sticky bottom-6">
-        <button onClick={handleSave} disabled={saving || progress === 0} className="btn-primary flex items-center gap-2">
+        <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2"
+          style={progress < 100 ? { opacity: 0.7 } : {}}>
           {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={15} />}
-          Save & Score
+          {progress === 100 ? 'Save & Score' : `Save (${questions.length - Object.keys(answers).length} unanswered)`}
         </button>
         <button onClick={() => navigate(`/vendors/${vendorId}`)} className="btn-glass">Cancel</button>
       </div>
