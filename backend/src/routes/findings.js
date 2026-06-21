@@ -64,8 +64,8 @@ router.get('/:id', auth, async (req, res) => {
 router.patch('/:id', auth, async (req, res) => {
   const { status, assigned_to, evidence_notes, notes } = req.body;
   const validTransitions = {
-    'raised': ['assigned','in_progress'],
-    'assigned': ['in_progress'],
+    'raised': ['assigned','in_progress','evidence_submitted'], // vendor can submit evidence directly
+    'assigned': ['in_progress','evidence_submitted'],
     'in_progress': ['evidence_submitted'],
     'evidence_submitted': ['verified','in_progress'],
     'verified': ['closed']

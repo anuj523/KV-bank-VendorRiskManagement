@@ -71,6 +71,16 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Advance workflow stage
+// GET live workflow status for a specific vendor
+router.get('/vendor/:vendorId', auth, async (req, res) => {
+  try {
+    const workflows = await getVendorWorkflowStatus(req.params.vendorId);
+    res.json(workflows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.patch('/:id/advance', auth, async (req, res) => {
   const { notes, decision } = req.body; // decision: approved | rejected | material_change
   try {
@@ -340,15 +350,6 @@ async function handleWorkflowCompletion(workflow, nextStage, newStatus, decision
   }
 }
 
-// GET live workflow status for a specific vendor
-router.get('/vendor/:vendorId', auth, async (req, res) => {
-  try {
-    const workflows = await getVendorWorkflowStatus(req.params.vendorId);
-    res.json(workflows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // Run auto-checks — renewal + escalation workflow creation
 router.post('/auto-check', auth, async (req, res) => {

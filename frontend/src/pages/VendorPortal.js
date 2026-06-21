@@ -481,12 +481,14 @@ export function VendorFindings() {
                 )}
               </div>
             </div>
-            {f.status === 'in_progress' && (
-              <EvidenceForm findingId={f.id} onSubmit={submitEvidence} />
-            )}
-            {f.status === 'raised' && (
-              <div className="mt-3 text-xs p-2 rounded-lg" style={{ background: 'rgba(74,159,212,0.08)', color: 'var(--text-secondary)' }}>
-                KVB will assign this finding to your team shortly. Once assigned, you can submit evidence here.
+            {['raised','assigned','in_progress'].includes(f.status) && (
+              <div className="mt-3">
+                {f.status === 'raised' && (
+                  <div className="mb-2 text-xs p-2 rounded-lg" style={{ background: 'rgba(74,159,212,0.08)', color: 'var(--text-secondary)' }}>
+                    This finding has been raised. You can submit evidence of remediation below.
+                  </div>
+                )}
+                <EvidenceForm findingId={f.id} onSubmit={submitEvidence} />
               </div>
             )}
           </div>
