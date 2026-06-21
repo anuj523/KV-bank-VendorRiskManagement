@@ -81,7 +81,7 @@ router.patch('/:id/advance', auth, async (req, res) => {
 
     const result = await query(
       `UPDATE workflows SET current_stage = $1, status = $2, notes = COALESCE($3, notes),
-       completed_at = CASE WHEN $2 IN ('completed','rejected') THEN NOW() ELSE NULL END,
+       completed_at = CASE WHEN $2::varchar IN ('completed','rejected') THEN NOW() ELSE NULL END,
        updated_at = NOW() WHERE id = $4 RETURNING *`,
       [nextStage, newStatus, notes, req.params.id]
     );

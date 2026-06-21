@@ -96,7 +96,7 @@ async function ensureVendorWorkflow(vendorId, workflowType) {
 
   const result = await query(
     `INSERT INTO workflows (vendor_id, workflow_type, status, current_stage, due_date, notes)
-     VALUES ($1, $2, 'in_progress', $3, $4, $5) RETURNING *`,
+     VALUES ($1::uuid, $2::varchar, 'in_progress', $3::varchar, $4, $5) RETURNING *`,
     [vendorId, workflowType, initialStage, dueDate,
      `Auto-created for ${v.name} on ${new Date().toLocaleDateString('en-IN')}`]
   );
@@ -130,9 +130,9 @@ async function syncWorkflowToVendorStatus(vendorId, newStatus) {
 
     await query(
       `UPDATE workflows SET 
-        current_stage = $1, 
-        status = $2,
-        completed_at = CASE WHEN $2 IN ('completed','rejected') THEN NOW() ELSE NULL END,
+        current_stage = $1::varchar, 
+        status = $2::varchar,
+        completed_at = CASE WHEN $2::varchar IN ('completed','rejected') THEN NOW() ELSE NULL END,
         updated_at = NOW()
        WHERE id = $3`,
       [stage, wfStatus, wf.id]
@@ -173,7 +173,7 @@ async function onFindingRaised(vendorId, findingId, severity) {
 
     const result = await query(
       `INSERT INTO workflows (vendor_id, workflow_type, status, current_stage, due_date, notes)
-       VALUES ($1, 'remediation', 'in_progress', 'finding_raised', NOW() + INTERVAL '30 days', $2)
+       VALUES ($1::uuid, 'remediation', 'in_progress', 'finding_raised', NOW() + INTERVAL '30 days', $2::varchar)
        RETURNING *`,
       [vendorId, `${severity.toUpperCase()} finding raised — remediation required`]
     );
@@ -208,14 +208,14 @@ async function checkAndCreateRenewalWorkflows() {
       
       await query(
         `INSERT INTO workflows (vendor_id, workflow_type, status, current_stage, due_date, notes)
-         VALUES ($1, 'renewal', 'in_progress', $2, $3, $4)`,
+         VALUES ($1::uuid, 'renewal', 'in_progress', $2::varchar, $3, $4::varchar)`,
         [vendor.id, stage, vendor.contract_end_date,
          `Auto-created: Contract expires in ${daysLeft} days (${new Date(vendor.contract_end_date).toLocaleDateString('en-IN')})`]
       );
 
       await query(
         `INSERT INTO notifications (vendor_id, type, title, message)
-         VALUES ($1, 'renewal_due', $2, $3)`,
+         VALUES ($1::uuid, 'renewal_due', $2::varchar, $3::varchar)`,
         [vendor.id,
          `Renewal Required: ${vendor.name}`,
          `Contract expires in ${daysLeft} days. Renewal workflow has been initiated automatically.`]
@@ -254,7 +254,7 @@ async function checkAndCreateEscalationWorkflows() {
 
       await query(
         `INSERT INTO workflows (vendor_id, workflow_type, status, current_stage, due_date, notes)
-         VALUES ($1, 'non_compliance_escalation', 'in_progress', $2, NOW() + INTERVAL '7 days', $3)`,
+         VALUES ($1::uuid, 'non_compliance_escalation', 'in_progress', $2::varchar, NOW() + INTERVAL '7 days', $3::varchar)`,
         [row.vendor_id, stage,
          `Auto-created: ${row.count} overdue finding(s), max ${days} days overdue`]
       );
