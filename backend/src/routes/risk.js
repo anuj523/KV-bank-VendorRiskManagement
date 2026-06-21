@@ -1,4 +1,5 @@
 const express = require('express');
+const { onFindingRaised } = require('../utils/workflowEngine');
 const { query } = require('../db');
 const { auth, auditLog } = require('../middleware/auth');
 
@@ -82,13 +83,14 @@ router.post('/:vendorId/questionnaire', auth, async (req, res) => {
       if (r.answer === 'non_compliant' || r.answer === 'partially_compliant') {
         const severity = r.answer === 'non_compliant' ? 'high' : 'medium';
         const findingRef = `F-${vendorId.substring(0,6).toUpperCase()}-${r.question_key.substring(0,8).toUpperCase()}`;
-        await query(
+        const findingResult = await query(
           `INSERT INTO findings (vendor_id, finding_ref, title, description, severity, domain, is_regulatory, regulatory_ref, target_date, linked_question_key)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8, NOW() + INTERVAL '30 days', $9)
            ON CONFLICT (finding_ref) DO UPDATE SET 
              title = EXCLUDED.title,
              description = EXCLUDED.description,
-             severity = EXCLUDED.severity`,
+             severity = EXCLUDED.severity
+           RETURNING id, severity`,
           [
             vendorId,
             findingRef,
@@ -100,6 +102,10 @@ router.post('/:vendorId/questionnaire', auth, async (req, res) => {
             r.question_key
           ]
         );
+        // Auto-create remediation workflow for each finding
+        if (findingResult.rows.length) {
+          await onFindingRaised(vendorId, findingResult.rows[0].id, severity);
+        }
       }
     }
 

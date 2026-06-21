@@ -139,6 +139,15 @@ export default function Workflows() {
           <button onClick={fetchAll} className="btn-glass flex items-center gap-2 text-sm">
             <RefreshCw size={14} /> Refresh
           </button>
+          <button onClick={async () => {
+            try {
+              const r = await api.post('/workflows/sync-all', {});
+              alert(`Sync complete!\n\nVendors processed: ${r.vendors_processed}\nWorkflows created: ${r.workflows_created}\nWorkflows synced: ${r.workflows_synced}\nRenewal workflows: ${r.renewal_workflows}\nEscalation workflows: ${r.escalation_workflows}`);
+              fetchAll();
+            } catch (err) { alert(err.message); }
+          }} className="btn-glass flex items-center gap-2 text-sm">
+            <RefreshCw size={14} /> Sync All Vendors
+          </button>
           <button onClick={() => setShowStart(true)} className="btn-primary flex items-center gap-2">
             <Plus size={15} /> Start Workflow
           </button>

@@ -1,4 +1,5 @@
 const express = require('express');
+const { onVendorCreated, syncWorkflowToVendorStatus } = require('../utils/workflowEngine');
 const { query } = require('../db');
 const { auth, auditLog } = require('../middleware/auth');
 
@@ -81,6 +82,9 @@ router.post('/', auth, async (req, res) => {
     );
     const vendor = result.rows[0];
     await auditLog(req, 'vendor_created', 'vendor', vendor.id, null, vendor);
+    
+    // Auto-create new_vendor_assessment workflow
+    await onVendorCreated(vendor.id);
 
     // Auto-classify if service description given
     if (service_description) {
@@ -184,6 +188,10 @@ router.patch('/:id/status', auth, async (req, res) => {
       [status, req.params.id]
     );
     await auditLog(req, `status_changed_to_${status}`, 'vendor', req.params.id, { status: current }, { status, notes });
+    
+    // Auto-sync workflow stage to match new vendor status
+    await syncWorkflowToVendorStatus(req.params.id, status);
+    
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);

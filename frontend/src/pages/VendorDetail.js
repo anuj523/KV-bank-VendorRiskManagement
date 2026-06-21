@@ -692,6 +692,7 @@ export default function VendorDetail() {
     { key: 'risk', label: 'Risk Scores', icon: TrendingUp },
     { key: 'findings', label: `Findings (${vendor.findings?.length || 0})`, icon: AlertTriangle },
     { key: 'documents', label: `Documents (${vendor.documents?.length || 0})`, icon: FileCheck },
+    { key: 'workflows', label: 'Workflows', icon: Activity },
     { key: 'ai', label: 'AI Insights', icon: Bot },
     { key: 'audit', label: 'Audit Trail', icon: Activity },
   ];
@@ -892,6 +893,7 @@ export default function VendorDetail() {
         </div>
       )}
 
+      {activeTab === 'workflows' && <VendorWorkflows vendorId={id} />}
       {activeTab === 'audit' && <AuditTrail vendorId={id} />}
     </div>
   );
@@ -926,6 +928,188 @@ function AuditTrail({ vendorId }) {
           </div>
         )) : <div className="text-center py-10" style={{ color:'var(--text-muted)' }}>No audit logs yet</div>}
       </div>
+    </div>
+  );
+}
+
+// ============================================================
+// VENDOR WORKFLOWS TAB — Live status for all vendor workflows
+// ============================================================
+function VendorWorkflows({ vendorId }) {
+  const [workflows, setWorkflows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchWorkflows = () => {
+    api.get(`/workflows/vendor/${vendorId}`)
+      .then(setWorkflows).catch(console.error).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchWorkflows(); }, [vendorId]);
+
+  const WF_LABELS = {
+    new_vendor_assessment: 'New Vendor Assessment',
+    periodic_review: 'Periodic Review',
+    remediation: 'Remediation',
+    renewal: 'Renewal',
+    non_compliance_escalation: 'Non-Compliance Escalation',
+    offboarding: 'Offboarding'
+  };
+
+  const WF_COLORS = {
+    new_vendor_assessment: '#60a5fa',
+    periodic_review: '#a78bfa',
+    remediation: '#fbbf24',
+    renewal: '#34d399',
+    non_compliance_escalation: '#f87171',
+    offboarding: '#fb923c'
+  };
+
+  const STAGE_ICONS = {
+    completed: '✅', in_progress: '🔄', pending_approval: '⏳',
+    rejected: '❌', on_hold: '⏸️'
+  };
+
+  const STAGE_LABELS = {
+    intake_received: 'Intake Received',
+    under_classification: 'Under Classification',
+    due_diligence_issued: 'Due Diligence Issued',
+    questionnaire_submitted: 'Questionnaire Submitted',
+    documents_collected: 'Documents Collected',
+    under_assessment: 'Under Assessment',
+    pending_approval: 'Pending Approval',
+    approved_active: 'Approved & Active',
+    reassessment_issued: 'Re-assessment Issued',
+    vendor_updating: 'Vendor Updating',
+    rescoring: 'Re-scoring',
+    comparison_complete: 'Comparison Complete',
+    finding_raised: 'Finding Raised',
+    assigned: 'Assigned',
+    in_progress: 'In Progress',
+    evidence_submitted: 'Evidence Submitted',
+    verified: 'Verified',
+    closed: 'Closed',
+    renewal_alert_90days: '90-Day Alert Sent',
+    renewal_alert_60days: '60-Day Alert Sent',
+    renewal_alert_30days: '30-Day Alert Sent',
+    renewal_assessment: 'Renewal Assessment',
+    compliance_check: 'Compliance Check',
+    renewed_active: 'Renewed & Active',
+    level_1_reminder: 'Level 1 — Reminder',
+    level_2_warning: 'Level 2 — Warning',
+    level_3_risk_team: 'Level 3 — Risk Team',
+    level_4_enforcement: 'Level 4 — Enforcement',
+    offboarding_notified: 'Vendor Notified',
+    data_return: 'Data Return',
+    access_revoked: 'Access Revoked',
+    it_signoff: 'IT Sign-off',
+    legal_signoff: 'Legal Sign-off',
+    archived: 'Archived',
+    completed: 'Completed',
+    started: 'Started'
+  };
+
+  const advance = async (wfId, decision) => {
+    const notes = prompt('Notes for this stage (optional):') || '';
+    try {
+      await api.patch(`/workflows/${wfId}/advance`, { decision, notes });
+      fetchWorkflows();
+    } catch (err) { alert(err.message); }
+  };
+
+  if (loading) return <div className="flex items-center justify-center h-32">
+    <div className="w-6 h-6 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin" />
+  </div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-display font-semibold text-white">Live Workflow Status</h3>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            Auto-updated as vendor moves through lifecycle · {workflows.filter(w => w.status === 'in_progress').length} active
+          </p>
+        </div>
+        <button onClick={fetchWorkflows} className="btn-glass text-xs py-1.5 px-3">↻ Refresh</button>
+      </div>
+
+      {workflows.length === 0 ? (
+        <div className="glass-card-flat p-10 text-center" style={{ color: 'var(--text-muted)' }}>
+          No workflows yet — they auto-create as vendor progresses
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {workflows.map(w => {
+            const color = WF_COLORS[w.workflow_type] || '#60a5fa';
+            const isActive = w.status === 'in_progress' || w.status === 'pending_approval';
+            const daysLeft = w.days_until_due != null ? Math.ceil(w.days_until_due) : null;
+            const isOverdue = daysLeft !== null && daysLeft < 0;
+
+            return (
+              <div key={w.id} className="glass-card-flat p-4"
+                style={{ borderLeft: `3px solid ${isActive ? color : 'rgba(255,255,255,0.1)'}` }}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-medium" style={{ color }}>{WF_LABELS[w.workflow_type]}</span>
+                      <span className={`badge text-xs ${
+                        w.status === 'completed' ? 'badge-green' :
+                        w.status === 'rejected' ? 'badge-red' :
+                        w.status === 'pending_approval' ? 'badge-purple' :
+                        w.status === 'on_hold' ? 'badge-amber' : 'badge-blue'
+                      }`}>
+                        {STAGE_ICONS[w.status]} {w.status?.replace(/_/g, ' ')}
+                      </span>
+                      {isOverdue && <span className="badge badge-red text-xs">⚠ Overdue</span>}
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <span>Current: <strong style={{ color: 'white' }}>{STAGE_LABELS[w.current_stage] || w.current_stage?.replace(/_/g,' ')}</strong></span>
+                      {daysLeft !== null && (
+                        <span style={{ color: isOverdue ? '#f87171' : daysLeft <= 3 ? '#fbbf24' : 'var(--text-muted)' }}>
+                          {isOverdue ? `${Math.abs(daysLeft)} days overdue` : `Due in ${daysLeft} days`}
+                        </span>
+                      )}
+                      <span>Started: {new Date(w.created_at).toLocaleDateString('en-IN')}</span>
+                      {w.completed_at && <span>Completed: {new Date(w.completed_at).toLocaleDateString('en-IN')}</span>}
+                    </div>
+
+                    {w.notes && (
+                      <p className="text-xs mt-1.5 line-clamp-1" style={{ color: 'var(--text-secondary)' }}>{w.notes}</p>
+                    )}
+                  </div>
+
+                  {isActive && (
+                    <div className="flex gap-1.5 flex-shrink-0">
+                      <button onClick={() => advance(w.id, 'approved')}
+                        className="text-xs py-1 px-2 rounded-lg border border-sky-500/30 text-sky-400 hover:bg-sky-500/10">
+                        Advance →
+                      </button>
+                      {w.workflow_type === 'periodic_review' && (
+                        <button onClick={() => advance(w.id, 'material_change')}
+                          className="text-xs py-1 px-2 rounded-lg border border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+                          Flag Change
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {w.status === 'pending_approval' && (
+                    <div className="flex gap-1.5 flex-shrink-0">
+                      <button onClick={() => advance(w.id, 'approved')}
+                        className="text-xs py-1 px-2 rounded-lg border border-green-500/30 text-green-400 hover:bg-green-500/10">
+                        ✓ Approve
+                      </button>
+                      <button onClick={() => advance(w.id, 'rejected')}
+                        className="text-xs py-1 px-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10">
+                        ✗ Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

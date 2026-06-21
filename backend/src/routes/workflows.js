@@ -1,4 +1,12 @@
 const express = require('express');
+const { 
+  getVendorWorkflowStatus, 
+  checkAndCreateRenewalWorkflows,
+  checkAndCreateEscalationWorkflows,
+  ensureVendorWorkflow,
+  syncWorkflowToVendorStatus,
+  onVendorCreated
+} = require('../utils/workflowEngine');
 const { query } = require('../db');
 const { auth, auditLog } = require('../middleware/auth');
 
@@ -331,5 +339,73 @@ async function handleWorkflowCompletion(workflow, nextStage, newStatus, decision
     await query(`UPDATE vendors SET status = 'suspended' WHERE id = $1`, [workflow.vendor_id]);
   }
 }
+
+// GET live workflow status for a specific vendor
+router.get('/vendor/:vendorId', auth, async (req, res) => {
+  try {
+    const workflows = await getVendorWorkflowStatus(req.params.vendorId);
+    res.json(workflows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Run auto-checks — renewal + escalation workflow creation
+router.post('/auto-check', auth, async (req, res) => {
+  try {
+    const [renewals, escalations] = await Promise.all([
+      checkAndCreateRenewalWorkflows(),
+      checkAndCreateEscalationWorkflows()
+    ]);
+    res.json({ 
+      renewal_workflows_created: renewals,
+      escalation_workflows_created: escalations,
+      message: `Created ${renewals} renewal and ${escalations} escalation workflows`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Sync all existing vendors — create missing workflows and update stages
+router.post('/sync-all', auth, async (req, res) => {
+  if (req.user.role !== 'system_administrator') {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+  try {
+    const { query } = require('../db');
+    const vendors = await query(`SELECT * FROM vendors WHERE status != 'offboarded'`);
+    let created = 0, synced = 0;
+
+    for (const vendor of vendors.rows) {
+      // Ensure new_vendor_assessment workflow exists
+      const existing = await query(
+        `SELECT id FROM workflows WHERE vendor_id = $1 AND workflow_type = 'new_vendor_assessment' LIMIT 1`,
+        [vendor.id]
+      );
+      if (!existing.rows.length) {
+        await onVendorCreated(vendor.id);
+        created++;
+      }
+      // Sync current stage to vendor status
+      await syncWorkflowToVendorStatus(vendor.id, vendor.status);
+      synced++;
+    }
+
+    // Also run auto-checks
+    const renewals = await checkAndCreateRenewalWorkflows();
+    const escalations = await checkAndCreateEscalationWorkflows();
+
+    res.json({ 
+      vendors_processed: vendors.rows.length,
+      workflows_created: created,
+      workflows_synced: synced,
+      renewal_workflows: renewals,
+      escalation_workflows: escalations
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router;
