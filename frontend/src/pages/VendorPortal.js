@@ -127,7 +127,7 @@ export function VendorQuestionnaire() {
           <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'rgba(74,159,212,0.1)', border: '1px solid rgba(74,159,212,0.2)' }}>
             <span className="text-sky-400 text-lg">ℹ</span>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Your vendor category hasn't been set yet. Please select the category that best describes your services to KVB — this determines which questions you'll be asked.
+              Your vendor category hasn't been set yet. Please select the category that best describes your services to ABC — this determines which questions you'll be asked.
             </p>
           </div>
           <div>
@@ -322,7 +322,7 @@ export function VendorDocuments() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-white">My Documents</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Upload compliance documents for KVB review</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Upload compliance documents for ABC review</p>
         </div>
         <button onClick={() => setShowUpload(!showUpload)} className="btn-primary flex items-center gap-2">
           <Upload size={15} /> Upload Document

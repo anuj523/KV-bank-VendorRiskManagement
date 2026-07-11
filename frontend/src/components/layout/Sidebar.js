@@ -77,7 +77,7 @@ export default function Sidebar() {
           {!collapsed && (
             <div className="overflow-hidden">
               <div className="font-display font-800 text-sm text-white leading-tight">Vendor Risk360</div>
-              <div className="text-xs" style={{ color: 'var(--text-muted)' }}>KVB TPRM Platform</div>
+              <div className="text-xs" style={{ color: 'var(--text-muted)' }}>ABC TPRM Platform</div>
             </div>
           )}
           <button

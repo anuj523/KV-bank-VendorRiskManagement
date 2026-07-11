@@ -111,7 +111,7 @@ export default function VendorDashboard() {
           {pendingDocs.length > 0 && (
             <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)' }}>
               <Clock size={16} className="text-sky-400 flex-shrink-0" />
-              <span className="text-sm text-white"><strong>{pendingDocs.length} document{pendingDocs.length > 1 ? 's' : ''} pending review</strong> by KVB</span>
+              <span className="text-sm text-white"><strong>{pendingDocs.length} document{pendingDocs.length > 1 ? 's' : ''} pending review</strong> by ABC</span>
               <Link to="/portal/documents" className="ml-auto text-xs text-sky-400 hover:text-sky-300 flex items-center gap-1">
                 View <ChevronRight size={12} />
               </Link>

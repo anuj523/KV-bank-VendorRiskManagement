@@ -42,7 +42,7 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Navigate to={user?.type === 'vendor' ? '/portal/dashboard' : '/dashboard'} replace />} />
 
-      {/* Internal KVB Staff routes */}
+      {/* Internal ABC Staff routes */}
       <Route path="/dashboard" element={<P><Dashboard /></P>} />
       <Route path="/vendors" element={<P><Vendors /></P>} />
       <Route path="/vendors/new" element={<P><AddVendor /></P>} />

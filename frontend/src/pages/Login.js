@@ -45,14 +45,14 @@ export default function Login() {
             <Shield size={28} className="text-white" />
           </div>
           <h1 className="font-display text-3xl font-bold text-white mb-1">Vendor Risk360</h1>
-          <p style={{ color: 'var(--text-secondary)' }} className="text-sm">Karur Vysya Bank • TPRM Platform</p>
+          <p style={{ color: 'var(--text-secondary)' }} className="text-sm">ABC Bank • TPRM Platform</p>
         </div>
 
         <div className="glass-card p-8">
           {/* Tab selector */}
           <div className="flex gap-1 p-1 rounded-xl mb-6" style={{ background: 'rgba(255,255,255,0.05)' }}>
             {[
-              { key: 'internal', label: 'KVB Staff', icon: Shield },
+              { key: 'internal', label: 'ABC Staff', icon: Shield },
               { key: 'vendor', label: 'Vendor Portal', icon: Building2 }
             ].map(({ key, label, icon: Icon }) => (
               <button
@@ -80,7 +80,7 @@ export default function Login() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="glass-input"
-                placeholder={tab === 'vendor' ? 'vendor@company.com' : 'you@kvbank.com'}
+                placeholder={tab === 'vendor' ? 'vendor@company.com' : 'you@abcbank.com'}
                 required
               />
             </div>
@@ -130,7 +130,7 @@ export default function Login() {
 
           {tab === 'internal' && (
             <p className="text-center text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
-              Default admin: admin@kvbank.com / Admin@123
+              Default admin: admin@abcbank.com / Admin@123
             </p>
           )}
         </div>

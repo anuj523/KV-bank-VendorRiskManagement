@@ -85,7 +85,7 @@ export default function AddVendor() {
               className="glass-input resize-none h-20"
               value={form.service_description}
               onChange={e => set('service_description', e.target.value)}
-              placeholder="Describe the services this vendor provides to KVB..."
+              placeholder="Describe the services this vendor provides to ABC..."
             />
           </div>
         </div>

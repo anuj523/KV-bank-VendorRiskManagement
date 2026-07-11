@@ -29,7 +29,7 @@ export default function AIInsights() {
       <div className="glass-card-flat p-5 flex items-center gap-3" style={{ border: '1px solid rgba(74,159,212,0.2)', background: 'rgba(74,159,212,0.05)' }}>
         <Shield size={18} className="text-sky-400 flex-shrink-0" />
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          <strong className="text-white">Human-in-the-loop enforced.</strong> All AI outputs are advisory only. No changes are applied until a KVB officer reviews and accepts the analysis.
+          <strong className="text-white">Human-in-the-loop enforced.</strong> All AI outputs are advisory only. No changes are applied until an ABC officer reviews and accepts the analysis.
         </p>
       </div>
 

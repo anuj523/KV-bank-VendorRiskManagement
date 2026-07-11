@@ -320,7 +320,7 @@ function DocumentsTab({ vendor, onRefresh }) {
 
       {/* Flow explanation note */}
       <div className="text-xs p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.06)' }}>
-        <strong className="text-white/50">How documents flow:</strong> Uploaded → Pending Review → Approve/Reject by KVB officer → 
+        <strong className="text-white/50">How documents flow:</strong> Uploaded → Pending Review → Approve/Reject by ABC officer → 
         Approved docs tracked on Documents dashboard for expiry → Uploading key docs (SOC 2, BCP, VAPT) automatically updates questionnaire compliance → 
         Affects risk score on next questionnaire save → Vendor health indicator updates on dashboard.
       </div>
@@ -404,7 +404,7 @@ function VendorEditForm({ vendor, onSave, onCancel, saving }) {
       <div className="py-2.5 border-b border-white/5">
         <div className="text-sm mb-1.5" style={{ color: 'var(--text-muted)' }}>Service Description</div>
         <textarea ref={refs.service_description} className="glass-input resize-none h-20 text-sm w-full"
-          defaultValue={vendor.service_description || ''} placeholder="Describe services provided to KVB..." />
+          defaultValue={vendor.service_description || ''} placeholder="Describe services provided to ABC..." />
       </div>
       <div className="pt-3 border-b border-white/5 pb-3">
         <div className="text-sm mb-2 font-medium text-white">Contract Details</div>
