@@ -1,21 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, ChevronRight, Search } from 'lucide-react';
+import { TrendingUp, ChevronRight, Search, Check, X } from 'lucide-react';
 import api from '../utils/api';
 
-// Criticality score: maps criticality label → numeric inherent score (0–100)
 const CRITICALITY_SCORE = { high: 100, medium: 70, low: 40 };
 
-// Residual = overall_risk_score inverted: high compliance = low residual risk
 const residualScore = (v) => {
   if (v.overall_risk_score == null) return null;
-  // overall_risk_score is compliance % (higher = better), so residual risk = 100 - score
   return Math.round(100 - parseFloat(v.overall_risk_score));
 };
 
-const inherentScore = (v) => {
-  if (v.criticality) return CRITICALITY_SCORE[v.criticality] ?? null;
-  return null;
+const inherentScore = (criticality) => {
+  return criticality ? (CRITICALITY_SCORE[criticality] ?? null) : null;
 };
 
 const ratingStyle = (rating) => {
@@ -25,12 +21,88 @@ const ratingStyle = (rating) => {
   return { bg: 'rgba(248,113,113,0.12)', color: '#f87171', border: 'rgba(248,113,113,0.3)' };
 };
 
-const criticalityStyle = (c, score) => {
-  if (!c) return { bg: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', border: 'rgba(255,255,255,0.1)' };
+const criticalityColor = (c) => {
   if (c === 'high') return { bg: 'rgba(248,113,113,0.12)', color: '#f87171', border: 'rgba(248,113,113,0.3)' };
   if (c === 'medium') return { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24', border: 'rgba(251,191,36,0.25)' };
-  return { bg: 'rgba(96,165,250,0.12)', color: '#60a5fa', border: 'rgba(96,165,250,0.25)' };
+  if (c === 'low') return { bg: 'rgba(96,165,250,0.12)', color: '#60a5fa', border: 'rgba(96,165,250,0.25)' };
+  return { bg: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', border: 'rgba(255,255,255,0.1)' };
 };
+
+function CriticalityCell({ vendor, onUpdate }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [value, setValue] = useState(vendor.criticality || '');
+
+  const save = async (val) => {
+    setSaving(true);
+    try {
+      await api.put(`/vendors/${vendor.id}`, { criticality: val });
+      onUpdate(vendor.id, { criticality: val });
+      setEditing(false);
+    } catch (err) {
+      alert('Failed to save: ' + err.message);
+    } finally { setSaving(false); }
+  };
+
+  if (editing) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <select
+          autoFocus
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          style={{
+            background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(56,189,248,0.4)',
+            borderRadius: '6px', color: 'white', padding: '3px 6px', fontSize: '12px', outline: 'none'
+          }}
+        >
+          <option value="">— Select —</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <button onClick={() => save(value)} disabled={saving || !value} style={{
+          background: 'rgba(74,222,128,0.15)', border: '1px solid rgba(74,222,128,0.3)',
+          borderRadius: '5px', padding: '3px 5px', cursor: 'pointer', color: '#4ade80'
+        }}>
+          {saving ? '…' : <Check size={11} />}
+        </button>
+        <button onClick={() => { setEditing(false); setValue(vendor.criticality || ''); }} style={{
+          background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)',
+          borderRadius: '5px', padding: '3px 5px', cursor: 'pointer', color: '#f87171'
+        }}>
+          <X size={11} />
+        </button>
+      </div>
+    );
+  }
+
+  const c = vendor.criticality;
+  const score = inherentScore(c);
+  const cs = criticalityColor(c);
+
+  if (!c) {
+    return (
+      <button onClick={() => setEditing(true)} style={{
+        background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.15)',
+        borderRadius: '20px', padding: '3px 10px', fontSize: '12px',
+        color: 'var(--text-muted)', cursor: 'pointer'
+      }}>
+        + Set
+      </button>
+    );
+  }
+
+  return (
+    <button onClick={() => setEditing(true)} title="Click to edit" style={{
+      background: cs.bg, color: cs.color, border: `1px solid ${cs.border}`,
+      borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '700',
+      textTransform: 'capitalize', cursor: 'pointer'
+    }}>
+      {c} ({score})
+    </button>
+  );
+}
 
 export default function RiskOverview() {
   const [vendors, setVendors] = useState([]);
@@ -44,6 +116,10 @@ export default function RiskOverview() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const handleUpdate = (vendorId, updates) => {
+    setVendors(prev => prev.map(v => v.id === vendorId ? { ...v, ...updates } : v));
+  };
 
   const filtered = vendors.filter(v => {
     const matchSearch = !search || v.name.toLowerCase().includes(search.toLowerCase());
@@ -147,11 +223,10 @@ export default function RiskOverview() {
                 <TrendingUp size={36} className="mx-auto mb-2 opacity-30" />No vendors found
               </td></tr>
             ) : filtered.map(v => {
-              const inherent = inherentScore(v);
+              const inherent = inherentScore(v.criticality);
               const residual = residualScore(v);
               const rating = v.risk_rating;
               const rs = ratingStyle(rating);
-              const cs = criticalityStyle(v.criticality, inherent);
               const openFindings = parseInt(v.open_findings_count) || 0;
 
               return (
@@ -164,33 +239,24 @@ export default function RiskOverview() {
                     )}
                   </td>
 
-                  {/* Criticality */}
+                  {/* Criticality — inline editable */}
                   <td>
-                    {v.criticality ? (
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '4px',
-                        background: cs.bg, color: cs.color, border: `1px solid ${cs.border}`,
-                        borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '700',
-                        textTransform: 'capitalize'
-                      }}>
-                        {v.criticality} {inherent != null && `(${inherent})`}
-                      </span>
-                    ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                    <CriticalityCell vendor={v} onUpdate={handleUpdate} />
                   </td>
 
-                  {/* Inherent score */}
+                  {/* Inherent */}
                   <td>
                     {inherent != null ? (
-                      <span className="font-semibold text-sm" style={{ color: inherent >= 80 ? '#f87171' : inherent >= 60 ? '#fbbf24' : '#4ade80' }}>
+                      <span className="font-bold text-sm" style={{ color: inherent >= 80 ? '#f87171' : inherent >= 60 ? '#fbbf24' : '#4ade80' }}>
                         {inherent}
                       </span>
                     ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                   </td>
 
-                  {/* Residual score */}
+                  {/* Residual */}
                   <td>
                     {residual != null ? (
-                      <span className="font-semibold text-sm" style={{ color: residual >= 50 ? '#f87171' : residual >= 25 ? '#fbbf24' : '#4ade80' }}>
+                      <span className="font-bold text-sm" style={{ color: residual >= 50 ? '#f87171' : residual >= 25 ? '#fbbf24' : '#4ade80' }}>
                         {residual}
                       </span>
                     ) : <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>⚠ Not scored</span>}
@@ -221,14 +287,13 @@ export default function RiskOverview() {
 
                   {/* Action */}
                   <td>
-                    <Link to={`/risk/${v.id}`}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
-                        background: 'rgba(56,189,248,0.12)', color: '#38bdf8',
-                        border: '1px solid rgba(56,189,248,0.25)',
-                        textDecoration: 'none', whiteSpace: 'nowrap'
-                      }}>
+                    <Link to={`/risk/${v.id}`} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+                      background: 'rgba(56,189,248,0.12)', color: '#38bdf8',
+                      border: '1px solid rgba(56,189,248,0.25)',
+                      textDecoration: 'none', whiteSpace: 'nowrap'
+                    }}>
                       {v.overall_risk_score != null ? 'Re-assess' : 'Assess'}
                       <ChevronRight size={13} />
                     </Link>
