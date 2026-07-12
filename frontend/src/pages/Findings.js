@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, Building2, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Building2, ChevronRight, ArrowLeft } from 'lucide-react';
 import api from '../utils/api';
 
 export default function Findings() {
@@ -8,7 +8,7 @@ export default function Findings() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ severity: '', status: '', domain: '' });
   const [selected, setSelected] = useState(null);
-  const [activeVendor, setActiveVendor] = useState('__all__');
+  const [activeVendor, setActiveVendor] = useState(null); // null = show vendor list
 
   const fetchFindings = useCallback(async () => {
     setLoading(true);
@@ -40,130 +40,162 @@ export default function Findings() {
     evidence_submitted: 'verified', verified: 'closed'
   };
 
-  // Build unique vendor list from findings
+  // Build vendor list
   const vendorMap = {};
   findings.forEach(f => {
     if (!f.vendor_name) return;
-    if (!vendorMap[f.vendor_name]) vendorMap[f.vendor_name] = { name: f.vendor_name, total: 0, high: 0, medium: 0 };
+    if (!vendorMap[f.vendor_name]) vendorMap[f.vendor_name] = { name: f.vendor_name, total: 0, high: 0, medium: 0, low: 0 };
     vendorMap[f.vendor_name].total++;
     if (f.severity === 'high') vendorMap[f.vendor_name].high++;
-    if (f.severity === 'medium') vendorMap[f.vendor_name].medium++;
+    else if (f.severity === 'medium') vendorMap[f.vendor_name].medium++;
+    else vendorMap[f.vendor_name].low++;
   });
   const vendors = Object.values(vendorMap);
 
-  const displayedFindings = activeVendor === '__all__'
-    ? findings
-    : findings.filter(f => f.vendor_name === activeVendor);
+  const displayedFindings = activeVendor
+    ? findings.filter(f => f.vendor_name === activeVendor)
+    : [];
 
-  const allHigh = findings.filter(f => f.severity === 'high').length;
-
-  return (
-    <div className="space-y-6 animate-in">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-white">Findings</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Track and remediate compliance gaps</p>
-      </div>
-
-      {/* Stats */}
-      {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: 'High Severity', count: stats.by_severity?.find(s => s.severity === 'high')?.count || 0, color: '#f87171' },
-            { label: 'Medium Severity', count: stats.by_severity?.find(s => s.severity === 'medium')?.count || 0, color: '#fbbf24' },
-            { label: 'Overdue', count: stats.overdue || 0, color: '#f87171' },
-            { label: 'Closed', count: stats.by_status?.find(s => s.status === 'closed')?.count || 0, color: '#4ade80' },
-          ].map(({ label, count, color }) => (
-            <div key={label} className="glass-card-flat p-4">
-              <div className="text-2xl font-bold font-display" style={{ color }}>{count}</div>
-              <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{label}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Vendor Tabs ── */}
-      {!loading && (
+  // ── VENDOR LIST VIEW ──
+  if (!activeVendor) {
+    return (
+      <div className="space-y-6 animate-in">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
-            Filter by Vendor
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {/* All Vendors button */}
-            <button
-              onClick={() => setActiveVendor('__all__')}
-              style={{
-                padding: '10px 18px',
-                borderRadius: '10px',
-                border: activeVendor === '__all__' ? '1.5px solid #38bdf8' : '1.5px solid rgba(255,255,255,0.1)',
-                background: activeVendor === '__all__' ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.04)',
-                color: activeVendor === '__all__' ? '#7dd3fc' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '14px',
-                fontWeight: activeVendor === '__all__' ? '600' : '400',
-              }}
-            >
-              <span>All Vendors</span>
-              <span style={{
-                background: allHigh > 0 ? 'rgba(248,113,113,0.2)' : 'rgba(255,255,255,0.1)',
-                color: allHigh > 0 ? '#f87171' : 'var(--text-muted)',
-                borderRadius: '20px', padding: '1px 8px', fontSize: '12px', fontWeight: '600'
-              }}>{findings.length}</span>
-            </button>
+          <h1 className="font-display text-2xl font-bold text-white">Findings</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Select a vendor to view its findings</p>
+        </div>
 
-            {/* One button per vendor */}
-            {vendors.map(v => {
-              const isActive = activeVendor === v.name;
-              return (
-                <button
-                  key={v.name}
-                  onClick={() => setActiveVendor(v.name)}
-                  style={{
-                    padding: '10px 18px',
-                    borderRadius: '10px',
-                    border: isActive ? '1.5px solid #38bdf8' : '1.5px solid rgba(255,255,255,0.1)',
-                    background: isActive ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.04)',
-                    color: isActive ? '#7dd3fc' : 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '14px',
-                    fontWeight: isActive ? '600' : '400',
-                  }}
-                >
-                  <Building2 size={14} style={{ opacity: 0.7, flexShrink: 0 }} />
-                  <span>{v.name}</span>
-                  <span style={{
-                    background: 'rgba(255,255,255,0.08)',
-                    color: 'var(--text-muted)',
-                    borderRadius: '20px', padding: '1px 8px', fontSize: '12px', fontWeight: '600'
-                  }}>{v.total}</span>
+        {/* Stats */}
+        {stats && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'High Severity', count: stats.by_severity?.find(s => s.severity === 'high')?.count || 0, color: '#f87171' },
+              { label: 'Medium Severity', count: stats.by_severity?.find(s => s.severity === 'medium')?.count || 0, color: '#fbbf24' },
+              { label: 'Overdue', count: stats.overdue || 0, color: '#f87171' },
+              { label: 'Closed', count: stats.by_status?.find(s => s.status === 'closed')?.count || 0, color: '#4ade80' },
+            ].map(({ label, count, color }) => (
+              <div key={label} className="glass-card-flat p-4">
+                <div className="text-2xl font-bold font-display" style={{ color }}>{count}</div>
+                <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Vendor rows */}
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="w-8 h-8 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {vendors.length === 0 ? (
+              <div className="glass-card-flat p-12 text-center" style={{ color: 'var(--text-muted)' }}>
+                <AlertTriangle size={36} className="mx-auto mb-2 opacity-30" />
+                No findings found
+              </div>
+            ) : vendors.map(v => (
+              <button
+                key={v.name}
+                onClick={() => setActiveVendor(v.name)}
+                className="w-full text-left"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '18px 24px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'rgba(255,255,255,0.03)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(56,189,248,0.08)';
+                  e.currentTarget.style.borderColor = 'rgba(56,189,248,0.3)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                }}
+              >
+                {/* Icon */}
+                <div style={{
+                  width: '44px', height: '44px', borderRadius: '10px', flexShrink: 0,
+                  background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <Building2 size={20} style={{ color: '#38bdf8' }} />
+                </div>
+
+                {/* Name */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: 'white', fontWeight: '600', fontSize: '15px' }}>{v.name}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>
+                    {v.total} finding{v.total !== 1 ? 's' : ''}
+                  </div>
+                </div>
+
+                {/* Severity pills */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                   {v.high > 0 && (
                     <span style={{
-                      background: 'rgba(248,113,113,0.2)', color: '#f87171',
-                      borderRadius: '20px', padding: '1px 8px', fontSize: '11px', fontWeight: '700'
+                      background: 'rgba(248,113,113,0.15)', color: '#f87171',
+                      border: '1px solid rgba(248,113,113,0.3)',
+                      borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '700'
                     }}>{v.high} HIGH</span>
                   )}
-                </button>
-              );
-            })}
-          </div>
+                  {v.medium > 0 && (
+                    <span style={{
+                      background: 'rgba(251,191,36,0.12)', color: '#fbbf24',
+                      border: '1px solid rgba(251,191,36,0.25)',
+                      borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600'
+                    }}>{v.medium} MED</span>
+                  )}
+                  {v.low > 0 && (
+                    <span style={{
+                      background: 'rgba(96,165,250,0.12)', color: '#60a5fa',
+                      border: '1px solid rgba(96,165,250,0.2)',
+                      borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600'
+                    }}>{v.low} LOW</span>
+                  )}
+                </div>
 
-          {/* Active vendor label */}
-          {activeVendor !== '__all__' && (
-            <div className="mt-3 flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <ChevronRight size={14} />
-              <span>Showing findings for <strong style={{ color: '#7dd3fc' }}>{activeVendor}</strong></span>
-              <span style={{ color: 'var(--text-muted)' }}>({displayedFindings.length} finding{displayedFindings.length !== 1 ? 's' : ''})</span>
-            </div>
-          )}
+                <ChevronRight size={18} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── FINDINGS DETAIL VIEW (after clicking a vendor) ──
+  const vendorInfo = vendorMap[activeVendor];
+  return (
+    <div className="space-y-6 animate-in">
+      {/* Back + header */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={() => setActiveVendor(null)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '8px 14px', borderRadius: '8px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(255,255,255,0.04)',
+            color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '13px',
+          }}
+        >
+          <ArrowLeft size={14} /> Back
+        </button>
+        <div>
+          <h1 className="font-display text-2xl font-bold text-white">{activeVendor}</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+            {vendorInfo?.total} finding{vendorInfo?.total !== 1 ? 's' : ''}
+            {vendorInfo?.high > 0 && <span style={{ color: '#f87171', marginLeft: '8px' }}>• {vendorInfo.high} High Severity</span>}
+          </p>
         </div>
-      )}
+      </div>
 
       {/* Filters */}
       <div className="glass-card-flat p-4 flex flex-wrap gap-3">
@@ -181,17 +213,13 @@ export default function Findings() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
-        {/* Findings table */}
+        {/* Table */}
         <div className={`${selected ? 'lg:col-span-2' : 'lg:col-span-3'} glass-card-flat overflow-hidden`}>
           <table className="glass-table">
-            <thead><tr><th>Finding</th><th>Severity</th><th>Vendor</th><th>Status</th><th>Due</th></tr></thead>
+            <thead><tr><th>Finding</th><th>Severity</th><th>Status</th><th>Due</th></tr></thead>
             <tbody>
-              {loading ? (
-                <tr><td colSpan={5} className="text-center py-10">
-                  <div className="w-6 h-6 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin mx-auto" />
-                </td></tr>
-              ) : displayedFindings.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
+              {displayedFindings.length === 0 ? (
+                <tr><td colSpan={4} className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
                   <AlertTriangle size={36} className="mx-auto mb-2 opacity-30" />No findings
                 </td></tr>
               ) : displayedFindings.map(f => (
@@ -202,7 +230,6 @@ export default function Findings() {
                     <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{f.domain?.replace(/_/g, ' ')}</div>
                   </td>
                   <td><span className={`badge ${f.severity === 'high' ? 'badge-red' : f.severity === 'medium' ? 'badge-amber' : 'badge-blue'}`}>{f.severity}</span></td>
-                  <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>{f.vendor_name}</td>
                   <td><span className="badge badge-gray text-xs">{f.status?.replace(/_/g, ' ')}</span></td>
                   <td className="text-xs" style={{ color: new Date(f.target_date) < new Date() && f.status !== 'closed' ? '#f87171' : 'var(--text-muted)' }}>
                     {f.target_date ? new Date(f.target_date).toLocaleDateString('en-IN') : '—'}
@@ -229,7 +256,6 @@ export default function Findings() {
               <div className="badge badge-amber">{selected.regulatory_ref} — Regulatory</div>
             )}
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>Vendor</span><span className="text-white">{selected.vendor_name}</span></div>
               <div className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>Status</span><span className="text-white">{selected.status?.replace(/_/g, ' ')}</span></div>
               <div className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>Domain</span><span className="text-white">{selected.domain?.replace(/_/g, ' ')}</span></div>
               <div className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>Due</span>
@@ -247,19 +273,11 @@ export default function Findings() {
             {selected.status !== 'closed' && SEV_NEXT_STATUS[selected.status] && (
               <div className="space-y-2">
                 {selected.status === 'in_progress' && (
-                  <textarea
-                    className="glass-input text-xs h-16 resize-none"
-                    placeholder="Evidence notes..."
-                    onChange={e => setSelected(prev => ({ ...prev, _evidence: e.target.value }))}
-                  />
+                  <textarea className="glass-input text-xs h-16 resize-none" placeholder="Evidence notes..."
+                    onChange={e => setSelected(prev => ({ ...prev, _evidence: e.target.value }))} />
                 )}
-                <button
-                  className="btn-primary w-full text-sm"
-                  onClick={() => updateFinding(selected.id, {
-                    status: SEV_NEXT_STATUS[selected.status],
-                    evidence_notes: selected._evidence
-                  })}
-                >
+                <button className="btn-primary w-full text-sm"
+                  onClick={() => updateFinding(selected.id, { status: SEV_NEXT_STATUS[selected.status], evidence_notes: selected._evidence })}>
                   Move to: {SEV_NEXT_STATUS[selected.status]?.replace(/_/g, ' ')}
                 </button>
               </div>
