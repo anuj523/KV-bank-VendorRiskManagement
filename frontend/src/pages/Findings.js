@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, Search } from 'lucide-react';
+import { AlertTriangle, Building2 } from 'lucide-react';
 import api from '../utils/api';
 
 export default function Findings() {
@@ -8,11 +8,12 @@ export default function Findings() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ severity: '', status: '', domain: '' });
   const [selected, setSelected] = useState(null);
+  const [activeVendor, setActiveVendor] = useState('__all__');
 
   const fetchFindings = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: 50, ...filters });
+      const params = new URLSearchParams({ limit: 200, ...filters });
       const [data, s] = await Promise.all([
         api.get(`/findings?${params}`),
         api.get('/findings/stats/summary')
@@ -24,6 +25,9 @@ export default function Findings() {
   }, [filters]);
 
   useEffect(() => { fetchFindings(); }, [fetchFindings]);
+
+  // Reset selected finding when vendor tab changes
+  useEffect(() => { setSelected(null); }, [activeVendor]);
 
   const updateFinding = async (id, updates) => {
     try {
@@ -37,6 +41,28 @@ export default function Findings() {
     raised: 'assigned', assigned: 'in_progress', in_progress: 'evidence_submitted',
     evidence_submitted: 'verified', verified: 'closed'
   };
+
+  // Build vendor list preserving insertion order
+  const vendorMap = {};
+  findings.forEach(f => {
+    if (f.vendor_name && !vendorMap[f.vendor_name]) {
+      vendorMap[f.vendor_name] = { name: f.vendor_name, count: 0, high: 0 };
+    }
+    if (f.vendor_name) {
+      vendorMap[f.vendor_name].count++;
+      if (f.severity === 'high') vendorMap[f.vendor_name].high++;
+    }
+  });
+  const vendors = Object.values(vendorMap);
+
+  const displayedFindings = activeVendor === '__all__'
+    ? findings
+    : findings.filter(f => f.vendor_name === activeVendor);
+
+  const tabs = [
+    { key: '__all__', label: 'All Vendors', count: findings.length, high: findings.filter(f => f.severity === 'high').length },
+    ...vendors.map(v => ({ key: v.name, label: v.name, count: v.count, high: v.high }))
+  ];
 
   return (
     <div className="space-y-6 animate-in">
@@ -62,6 +88,45 @@ export default function Findings() {
         </div>
       )}
 
+      {/* Vendor Tabs */}
+      {!loading && vendors.length > 0 && (
+        <div className="glass-card-flat p-1 flex flex-wrap gap-1">
+          {tabs.map(tab => {
+            const isActive = activeVendor === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveVendor(tab.key)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150"
+                style={{
+                  background: isActive ? 'rgba(74,159,212,0.18)' : 'transparent',
+                  color: isActive ? '#7dd3fc' : 'var(--text-secondary)',
+                  border: isActive ? '1px solid rgba(74,159,212,0.35)' : '1px solid transparent',
+                }}
+              >
+                {tab.key !== '__all__' && <Building2 size={13} style={{ opacity: 0.7 }} />}
+                <span>{tab.label}</span>
+                <span
+                  className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
+                  style={{
+                    background: tab.high > 0 ? 'rgba(248,113,113,0.18)' : 'rgba(255,255,255,0.07)',
+                    color: tab.high > 0 ? '#f87171' : 'var(--text-muted)',
+                  }}
+                >
+                  {tab.count}
+                </span>
+                {tab.high > 0 && (
+                  <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
+                    style={{ background: 'rgba(248,113,113,0.18)', color: '#f87171' }}>
+                    {tab.high} HIGH
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Filters */}
       <div className="glass-card-flat p-4 flex flex-wrap gap-3">
         {[
@@ -75,6 +140,13 @@ export default function Findings() {
             {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         ))}
+        {activeVendor !== '__all__' && (
+          <div className="flex items-center gap-2 ml-auto text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <Building2 size={14} />
+            <span>Showing: <strong style={{ color: '#7dd3fc' }}>{activeVendor}</strong></span>
+            <span style={{ color: 'var(--text-muted)' }}>— {displayedFindings.length} finding{displayedFindings.length !== 1 ? 's' : ''}</span>
+          </div>
+        )}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
@@ -87,11 +159,11 @@ export default function Findings() {
                 <tr><td colSpan={5} className="text-center py-10">
                   <div className="w-6 h-6 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin mx-auto" />
                 </td></tr>
-              ) : findings.length === 0 ? (
+              ) : displayedFindings.length === 0 ? (
                 <tr><td colSpan={5} className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
                   <AlertTriangle size={36} className="mx-auto mb-2 opacity-30" />No findings
                 </td></tr>
-              ) : findings.map(f => (
+              ) : displayedFindings.map(f => (
                 <tr key={f.id} onClick={() => setSelected(f)} className="cursor-pointer"
                   style={{ background: selected?.id === f.id ? 'rgba(74,159,212,0.06)' : '' }}>
                   <td>
