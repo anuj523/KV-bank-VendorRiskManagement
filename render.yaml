@@ -25,6 +25,7 @@ services:
     name: vendor-risk360-frontend
     env: static
     region: singapore
+    rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
     pullRequestPreviewsEnabled: true
