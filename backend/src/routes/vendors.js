@@ -31,7 +31,8 @@ router.get('/', auth, async (req, res) => {
 
     params.push(limit, offset);
     const result = await query(
-      `SELECT v.*, u.full_name as owner_name 
+      `SELECT v.*, u.full_name as owner_name,
+        (SELECT COUNT(*) FROM findings f WHERE f.vendor_id = v.id AND f.status NOT IN ('closed','verified')) AS open_findings_count
        FROM vendors v LEFT JOIN users u ON v.owner_id = u.id 
        ${where} ORDER BY v.updated_at DESC LIMIT $${pi} OFFSET $${pi+1}`,
       params

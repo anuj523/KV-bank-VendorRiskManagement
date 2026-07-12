@@ -12,7 +12,7 @@ const navItems = [
   { path: '/vendors', label: 'Vendors', icon: Building2 },
   { path: '/findings', label: 'Findings', icon: AlertTriangle },
   { path: '/documents', label: 'Documents', icon: FileCheck },
-  { path: '/risk', label: 'Risk Scoring', icon: TrendingUp },
+  { path: '/risk', label: 'Risk Assessment', icon: TrendingUp },
   { path: '/workflows', label: 'Workflows', icon: GitBranch },
   { path: '/escalation', label: 'Escalation', icon: Siren },
   { path: '/renewals', label: 'Renewals', icon: RefreshCw },

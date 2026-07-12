@@ -25,7 +25,7 @@ const STAGE_LABELS = {
   classification: 'Classification',
   due_diligence_issued: 'DD Issued',
   documents_collected: 'Docs Collected',
-  risk_scoring: 'Risk Scoring',
+  risk_scoring: 'Risk Assessment',
   approved_active: 'Approved ✓',
   rejected: 'Rejected ✗',
   reassessment_issued: 'Re-assessment Issued',
