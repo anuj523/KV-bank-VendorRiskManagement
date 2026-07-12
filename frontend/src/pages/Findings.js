@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, Building2 } from 'lucide-react';
+import { AlertTriangle, Building2, ChevronRight } from 'lucide-react';
 import api from '../utils/api';
 
 export default function Findings() {
@@ -13,20 +13,18 @@ export default function Findings() {
   const fetchFindings = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: 200, ...filters });
+      const params = new URLSearchParams({ limit: 500, ...filters });
       const [data, s] = await Promise.all([
         api.get(`/findings?${params}`),
         api.get('/findings/stats/summary')
       ]);
-      setFindings(data.findings);
+      setFindings(data.findings || []);
       setStats(s);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }, [filters]);
 
   useEffect(() => { fetchFindings(); }, [fetchFindings]);
-
-  // Reset selected finding when vendor tab changes
   useEffect(() => { setSelected(null); }, [activeVendor]);
 
   const updateFinding = async (id, updates) => {
@@ -42,16 +40,14 @@ export default function Findings() {
     evidence_submitted: 'verified', verified: 'closed'
   };
 
-  // Build vendor list preserving insertion order
+  // Build unique vendor list from findings
   const vendorMap = {};
   findings.forEach(f => {
-    if (f.vendor_name && !vendorMap[f.vendor_name]) {
-      vendorMap[f.vendor_name] = { name: f.vendor_name, count: 0, high: 0 };
-    }
-    if (f.vendor_name) {
-      vendorMap[f.vendor_name].count++;
-      if (f.severity === 'high') vendorMap[f.vendor_name].high++;
-    }
+    if (!f.vendor_name) return;
+    if (!vendorMap[f.vendor_name]) vendorMap[f.vendor_name] = { name: f.vendor_name, total: 0, high: 0, medium: 0 };
+    vendorMap[f.vendor_name].total++;
+    if (f.severity === 'high') vendorMap[f.vendor_name].high++;
+    if (f.severity === 'medium') vendorMap[f.vendor_name].medium++;
   });
   const vendors = Object.values(vendorMap);
 
@@ -59,10 +55,7 @@ export default function Findings() {
     ? findings
     : findings.filter(f => f.vendor_name === activeVendor);
 
-  const tabs = [
-    { key: '__all__', label: 'All Vendors', count: findings.length, high: findings.filter(f => f.severity === 'high').length },
-    ...vendors.map(v => ({ key: v.name, label: v.name, count: v.count, high: v.high }))
-  ];
+  const allHigh = findings.filter(f => f.severity === 'high').length;
 
   return (
     <div className="space-y-6 animate-in">
@@ -71,7 +64,7 @@ export default function Findings() {
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Track and remediate compliance gaps</p>
       </div>
 
-      {/* Stats row */}
+      {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
@@ -88,42 +81,87 @@ export default function Findings() {
         </div>
       )}
 
-      {/* Vendor Tabs */}
-      {!loading && vendors.length > 0 && (
-        <div className="glass-card-flat p-1 flex flex-wrap gap-1">
-          {tabs.map(tab => {
-            const isActive = activeVendor === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveVendor(tab.key)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150"
-                style={{
-                  background: isActive ? 'rgba(74,159,212,0.18)' : 'transparent',
-                  color: isActive ? '#7dd3fc' : 'var(--text-secondary)',
-                  border: isActive ? '1px solid rgba(74,159,212,0.35)' : '1px solid transparent',
-                }}
-              >
-                {tab.key !== '__all__' && <Building2 size={13} style={{ opacity: 0.7 }} />}
-                <span>{tab.label}</span>
-                <span
-                  className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
+      {/* ── Vendor Tabs ── */}
+      {!loading && (
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
+            Filter by Vendor
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {/* All Vendors button */}
+            <button
+              onClick={() => setActiveVendor('__all__')}
+              style={{
+                padding: '10px 18px',
+                borderRadius: '10px',
+                border: activeVendor === '__all__' ? '1.5px solid #38bdf8' : '1.5px solid rgba(255,255,255,0.1)',
+                background: activeVendor === '__all__' ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.04)',
+                color: activeVendor === '__all__' ? '#7dd3fc' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '14px',
+                fontWeight: activeVendor === '__all__' ? '600' : '400',
+              }}
+            >
+              <span>All Vendors</span>
+              <span style={{
+                background: allHigh > 0 ? 'rgba(248,113,113,0.2)' : 'rgba(255,255,255,0.1)',
+                color: allHigh > 0 ? '#f87171' : 'var(--text-muted)',
+                borderRadius: '20px', padding: '1px 8px', fontSize: '12px', fontWeight: '600'
+              }}>{findings.length}</span>
+            </button>
+
+            {/* One button per vendor */}
+            {vendors.map(v => {
+              const isActive = activeVendor === v.name;
+              return (
+                <button
+                  key={v.name}
+                  onClick={() => setActiveVendor(v.name)}
                   style={{
-                    background: tab.high > 0 ? 'rgba(248,113,113,0.18)' : 'rgba(255,255,255,0.07)',
-                    color: tab.high > 0 ? '#f87171' : 'var(--text-muted)',
+                    padding: '10px 18px',
+                    borderRadius: '10px',
+                    border: isActive ? '1.5px solid #38bdf8' : '1.5px solid rgba(255,255,255,0.1)',
+                    background: isActive ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.04)',
+                    color: isActive ? '#7dd3fc' : 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '14px',
+                    fontWeight: isActive ? '600' : '400',
                   }}
                 >
-                  {tab.count}
-                </span>
-                {tab.high > 0 && (
-                  <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
-                    style={{ background: 'rgba(248,113,113,0.18)', color: '#f87171' }}>
-                    {tab.high} HIGH
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                  <Building2 size={14} style={{ opacity: 0.7, flexShrink: 0 }} />
+                  <span>{v.name}</span>
+                  <span style={{
+                    background: 'rgba(255,255,255,0.08)',
+                    color: 'var(--text-muted)',
+                    borderRadius: '20px', padding: '1px 8px', fontSize: '12px', fontWeight: '600'
+                  }}>{v.total}</span>
+                  {v.high > 0 && (
+                    <span style={{
+                      background: 'rgba(248,113,113,0.2)', color: '#f87171',
+                      borderRadius: '20px', padding: '1px 8px', fontSize: '11px', fontWeight: '700'
+                    }}>{v.high} HIGH</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active vendor label */}
+          {activeVendor !== '__all__' && (
+            <div className="mt-3 flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <ChevronRight size={14} />
+              <span>Showing findings for <strong style={{ color: '#7dd3fc' }}>{activeVendor}</strong></span>
+              <span style={{ color: 'var(--text-muted)' }}>({displayedFindings.length} finding{displayedFindings.length !== 1 ? 's' : ''})</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -140,17 +178,10 @@ export default function Findings() {
             {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         ))}
-        {activeVendor !== '__all__' && (
-          <div className="flex items-center gap-2 ml-auto text-sm" style={{ color: 'var(--text-secondary)' }}>
-            <Building2 size={14} />
-            <span>Showing: <strong style={{ color: '#7dd3fc' }}>{activeVendor}</strong></span>
-            <span style={{ color: 'var(--text-muted)' }}>— {displayedFindings.length} finding{displayedFindings.length !== 1 ? 's' : ''}</span>
-          </div>
-        )}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
-        {/* List */}
+        {/* Findings table */}
         <div className={`${selected ? 'lg:col-span-2' : 'lg:col-span-3'} glass-card-flat overflow-hidden`}>
           <table className="glass-table">
             <thead><tr><th>Finding</th><th>Severity</th><th>Vendor</th><th>Status</th><th>Due</th></tr></thead>
