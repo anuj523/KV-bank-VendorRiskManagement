@@ -269,28 +269,125 @@ function NoteInput({ questionKey, value, onChange }) {
 export function VendorDocuments() {
   const { user } = useAuth();
   const [docs, setDocs] = useState([]);
+  const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({ document_type: '', valid_from: '', valid_until: '' });
   const [file, setFile] = useState(null);
+  const [aiTip, setAiTip] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
   const fileRef = useRef();
 
-  const DOCUMENT_TYPES = [
-    'SOC 2 Type II Report','ISO 27001 Certificate','Penetration Test Report',
-    'Business Continuity Plan','Disaster Recovery Plan','Insurance Certificate',
-    'NDA / Confidentiality Agreement','Data Processing Agreement',
-    'VAPT Report','Financial Statements','Company Registration',
-    'RBI Compliance Certificate','PCI DSS Certificate','Other'
+  const CATEGORY_REQUIRED_DOCS = {
+    technology_cloud: [
+      { name: 'SOC 2 Type II Report', critical: true, why: 'Required under RBI TPRM guidelines for cloud service providers' },
+      { name: 'ISO 27001 Certificate', critical: true, why: 'Mandatory information security certification' },
+      { name: 'Penetration Test Report', critical: true, why: 'Required to verify security posture of systems handling bank data' },
+      { name: 'Business Continuity Plan', critical: true, why: 'RBI/2021-22/117 mandates BCP documentation' },
+      { name: 'Data Processing Agreement', critical: true, why: 'DPDPA-2023 requires formal data processing agreement' },
+      { name: 'Insurance Certificate', critical: false, why: 'Cyber liability insurance recommended for cloud vendors' },
+      { name: 'NDA / Confidentiality Agreement', critical: false, why: 'Protects confidential bank data and processes' },
+      { name: 'VAPT Report', critical: false, why: 'Vulnerability assessment confirms application-level security' },
+    ],
+    it_products_software: [
+      { name: 'SOC 2 Type II Report', critical: true, why: 'Validates security controls for software handling bank data' },
+      { name: 'Penetration Test Report', critical: true, why: 'Confirms product-level security before deployment' },
+      { name: 'VAPT Report', critical: true, why: 'Required for all software products integrated with bank systems' },
+      { name: 'ISO 27001 Certificate', critical: true, why: 'Information security management certification' },
+      { name: 'Data Processing Agreement', critical: true, why: 'DPDPA-2023 compliance for data handling' },
+      { name: 'Insurance Certificate', critical: false, why: 'Professional indemnity cover for software defects' },
+      { name: 'NDA / Confidentiality Agreement', critical: false, why: 'Protects bank IP and data shared during integration' },
+    ],
+    financial_fintech: [
+      { name: 'SOC 2 Report', critical: true, why: 'RBI TPRM mandates SOC 2 for all fintech partners' },
+      { name: 'ISO 27001 Certificate', critical: true, why: 'Information security baseline required by RBI' },
+      { name: 'Penetration Test Report', critical: true, why: 'Required for any vendor handling financial transactions' },
+      { name: 'Audited Financial Statements', critical: true, why: 'Financial stability verification per RBI outsourcing guidelines' },
+      { name: 'Insurance Certificate', critical: true, why: 'Cyber liability and professional indemnity mandatory for fintech' },
+      { name: 'BCP / DR Plan', critical: true, why: 'Business continuity critical for financial service continuity' },
+      { name: 'Data Processing Agreement', critical: true, why: 'DPDPA-2023 and RBI data localisation compliance' },
+      { name: 'Regulatory Compliance Certificate', critical: true, why: 'RBI/SEBI/IRDAI licence verification required' },
+      { name: 'Sanctions / Adverse Media Screening', critical: true, why: 'PMLA-2002 AML/KYC compliance requirement' },
+    ],
+    outsourcing_data: [
+      { name: 'Data Processing Agreement', critical: true, why: 'DPDPA-2023 mandates formal DPA for all data processors' },
+      { name: 'ISO 27001 Certificate', critical: true, why: 'Required for any vendor processing bank customer data' },
+      { name: 'SOC 2 Type II Report', critical: true, why: 'Controls assurance for outsourced data processing' },
+      { name: 'Business Continuity Plan', critical: true, why: 'Operational resilience for critical outsourced functions' },
+      { name: 'Penetration Test Report', critical: true, why: 'Security validation for systems handling outsourced bank data' },
+      { name: 'NDA / Confidentiality Agreement', critical: true, why: 'Confidentiality of customer data legally protected' },
+      { name: 'Insurance Certificate', critical: false, why: 'Data breach insurance recommended' },
+      { name: 'RBI Compliance Certificate', critical: false, why: 'RBI outsourcing framework compliance' },
+    ],
+    professional_services: [
+      { name: 'Insurance Certificate', critical: true, why: 'Professional indemnity insurance required for consultants' },
+      { name: 'NDA / Confidentiality Agreement', critical: true, why: 'Access to confidential bank information requires NDA' },
+      { name: 'Company Registration', critical: true, why: 'Legal entity verification mandatory' },
+      { name: 'Financial Statements', critical: false, why: 'Financial stability check for significant engagements' },
+      { name: 'Data Processing Agreement', critical: false, why: 'If consultant handles any personal data' },
+      { name: 'ISO 27001 Certificate', critical: false, why: 'Recommended for IT-related professional services' },
+    ],
+    facilities_operations: [
+      { name: 'Insurance Certificate', critical: true, why: 'Liability insurance mandatory for on-premises vendors' },
+      { name: 'Company Registration', critical: true, why: 'Legal entity verification required' },
+      { name: 'Business Continuity Plan', critical: true, why: 'Continuity of critical facility services' },
+      { name: 'Financial Statements', critical: false, why: 'Financial stability for long-term facility contracts' },
+      { name: 'NDA / Confidentiality Agreement', critical: false, why: 'Staff with bank premises access require NDA' },
+    ],
+  };
+
+  const ALL_DOCUMENT_TYPES = [
+    'SOC 2 Type II Report', 'SOC 2 Report', 'ISO 27001 Certificate', 'Penetration Test Report',
+    'Business Continuity Plan', 'BCP / DR Plan', 'Insurance Certificate',
+    'NDA / Confidentiality Agreement', 'Data Processing Agreement', 'VAPT Report',
+    'Financial Statements', 'Audited Financial Statements', 'Company Registration',
+    'RBI Compliance Certificate', 'Regulatory Compliance Certificate',
+    'Sanctions / Adverse Media Screening', 'PCI DSS Certificate', 'Other'
   ];
 
   const fetchDocs = () => {
     if (!user?.vendor_id) return;
     api.get(`/documents/vendor/${user.vendor_id}`)
-      .then(setDocs).catch(console.error).finally(() => setLoading(false));
+      .then(d => setDocs(Array.isArray(d) ? d : d.documents || []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchDocs(); }, [user]);
+  useEffect(() => {
+    if (!user?.vendor_id) return;
+    api.get(`/vendors/${user.vendor_id}`).then(setVendor).catch(console.error);
+    fetchDocs();
+  }, [user]);
+
+  // Load AI tip when vendor category is known
+  useEffect(() => {
+    if (!vendor?.category || aiTip) return;
+    setAiLoading(true);
+    fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `You are a compliance assistant in ABC Bank's vendor portal. The vendor is in the "${vendor.category.replace(/_/g,' ')}" category.
+
+Write a SHORT (3-4 sentences max) helpful message to the vendor explaining:
+1. Why their specific document set is required
+2. The key regulatory frameworks that apply to them (RBI, DPDPA-2023, PMLA etc.)
+3. One practical tip for faster approval
+
+Be warm, direct, and vendor-friendly. No bullet points. No markdown. Plain text only.`
+        }]
+      })
+    })
+    .then(r => r.json())
+    .then(d => setAiTip(d.content?.[0]?.text || ''))
+    .catch(() => setAiTip(''))
+    .finally(() => setAiLoading(false));
+  }, [vendor?.category]);
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -313,26 +410,124 @@ export function VendorDocuments() {
     } finally { setUploading(false); }
   };
 
+  const quickUpload = (docName) => {
+    setForm(p => ({ ...p, document_type: docName }));
+    setShowUpload(true);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+  };
+
+  const matchDoc = (docName) =>
+    docs.find(d =>
+      d.document_type?.toLowerCase().includes(docName.toLowerCase()) ||
+      docName.toLowerCase().includes(d.document_type?.toLowerCase())
+    );
+
+  const checklist = vendor?.category ? (CATEGORY_REQUIRED_DOCS[vendor.category] || []) : [];
+  const criticalDocs = checklist.filter(d => d.critical);
+  const uploaded = checklist.filter(d => matchDoc(d.name));
+  const approved = checklist.filter(d => { const m = matchDoc(d.name); return m && m.status === 'approved'; });
+  const completionPct = criticalDocs.length > 0
+    ? Math.round((approved.filter(d => d.critical).length / criticalDocs.length) * 100)
+    : 0;
+  const rejectedDocs = docs.filter(d => d.status === 'rejected');
+
   if (loading) return <div className="flex items-center justify-center h-64">
     <div className="w-8 h-8 border-2 border-sky-400/30 border-t-sky-400 rounded-full animate-spin" />
   </div>;
 
   return (
-    <div className="space-y-6 animate-in">
+    <div className="space-y-5 animate-in">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-white">My Documents</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Upload compliance documents for ABC review</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Upload compliance documents for ABC Bank review</p>
         </div>
         <button onClick={() => setShowUpload(!showUpload)} className="btn-primary flex items-center gap-2">
           <Upload size={15} /> Upload Document
         </button>
       </div>
 
+      {/* AI Tip Banner */}
+      {(aiLoading || aiTip) && (
+        <div style={{
+          background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)',
+          borderRadius: '12px', padding: '14px 16px', display: 'flex', gap: '12px', alignItems: 'flex-start'
+        }}>
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
+            background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px'
+          }}>✦</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#a78bfa', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              AI Compliance Guide · {vendor?.category?.replace(/_/g, ' ')}
+            </div>
+            {aiLoading ? (
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <div className="w-3 h-3 border border-purple-400/40 border-t-purple-400 rounded-full animate-spin" />
+                <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Generating guidance for your category…</span>
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.6', margin: 0 }}>{aiTip}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Completion progress */}
+      {checklist.length > 0 && (
+        <div className="glass-card-flat p-4">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: 'white' }}>
+              Document Completion — Critical Requirements
+            </div>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: completionPct === 100 ? '#4ade80' : completionPct >= 50 ? '#fbbf24' : '#f87171' }}>
+              {approved.filter(d => d.critical).length} / {criticalDocs.length} approved
+            </div>
+          </div>
+          <div style={{ height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{
+              width: `${completionPct}%`, height: '100%', borderRadius: '4px',
+              background: completionPct === 100 ? '#4ade80' : completionPct >= 50 ? '#fbbf24' : '#f87171',
+              transition: 'width 0.4s ease'
+            }} />
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
+            {completionPct === 100
+              ? '✓ All critical documents approved — your compliance is complete'
+              : `${criticalDocs.length - approved.filter(d => d.critical).length} critical document(s) still needed for full compliance`}
+          </div>
+        </div>
+      )}
+
+      {/* Rejection alerts */}
+      {rejectedDocs.length > 0 && (
+        <div style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: '12px', padding: '14px 16px' }}>
+          <div style={{ color: '#f87171', fontWeight: '600', fontSize: '13px', marginBottom: '8px' }}>
+            ⚠ {rejectedDocs.length} document{rejectedDocs.length > 1 ? 's' : ''} rejected — please re-upload
+          </div>
+          {rejectedDocs.map(d => (
+            <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid rgba(248,113,113,0.1)' }}>
+              <div>
+                <div style={{ color: 'white', fontSize: '13px', fontWeight: '500' }}>{d.document_type}</div>
+                {d.rejection_reason && <div style={{ color: '#f87171', fontSize: '12px', marginTop: '2px' }}>{d.rejection_reason}</div>}
+              </div>
+              <button onClick={() => quickUpload(d.document_type)} style={{
+                padding: '4px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600',
+                background: 'rgba(248,113,113,0.12)', color: '#f87171',
+                border: '1px solid rgba(248,113,113,0.25)', cursor: 'pointer'
+              }}>Re-upload</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Upload form */}
       {showUpload && (
         <div className="glass-card-flat p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium text-white">Upload New Document</h4>
+            <h4 className="font-medium text-white">Upload Document</h4>
             <button onClick={() => setShowUpload(false)}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
           </div>
           <form onSubmit={handleUpload} className="space-y-3">
@@ -340,8 +535,15 @@ export function VendorDocuments() {
               <label className="block text-xs mb-1.5" style={{ color: 'var(--text-secondary)' }}>Document Type *</label>
               <select className="glass-input" value={form.document_type}
                 onChange={e => setForm(p => ({ ...p, document_type: e.target.value }))} required>
-                <option value="">Select type...</option>
-                {DOCUMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                <option value="">Select type…</option>
+                {checklist.length > 0 && (
+                  <optgroup label="Required for your category">
+                    {checklist.map(d => <option key={d.name} value={d.name}>{d.name}{d.critical ? ' ★' : ''}</option>)}
+                  </optgroup>
+                )}
+                <optgroup label="Other documents">
+                  {ALL_DOCUMENT_TYPES.filter(t => !checklist.find(d => d.name === t)).map(t => <option key={t} value={t}>{t}</option>)}
+                </optgroup>
               </select>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -360,7 +562,7 @@ export function VendorDocuments() {
               <label className="block text-xs mb-1.5" style={{ color: 'var(--text-secondary)' }}>File * (PDF, DOCX, XLSX, PNG — max 20MB)</label>
               <div className="glass-input flex items-center gap-3 cursor-pointer" onClick={() => fileRef.current.click()} style={{ borderStyle: 'dashed' }}>
                 <Upload size={16} style={{ color: 'var(--text-muted)' }} />
-                <span style={{ color: file ? 'white' : 'var(--text-muted)' }}>{file ? file.name : 'Click to select file...'}</span>
+                <span style={{ color: file ? 'white' : 'var(--text-muted)' }}>{file ? file.name : 'Click to select file…'}</span>
                 <input ref={fileRef} type="file" className="hidden" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg"
                   onChange={e => setFile(e.target.files[0])} />
               </div>
@@ -376,7 +578,74 @@ export function VendorDocuments() {
         </div>
       )}
 
+      {/* Required documents checklist */}
+      {checklist.length > 0 && (
+        <div className="glass-card-flat overflow-hidden">
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileCheck size={15} style={{ color: '#a78bfa' }} />
+            <span style={{ fontWeight: '600', color: 'white', fontSize: '14px' }}>Required Documents for Your Category</span>
+            <span style={{ marginLeft: '4px', fontSize: '12px', color: 'var(--text-muted)' }}>
+              {checklist.length} documents · {criticalDocs.length} critical
+            </span>
+          </div>
+          <div style={{ divideY: '1px solid rgba(255,255,255,0.05)' }}>
+            {checklist.map((req, i) => {
+              const uploaded = matchDoc(req.name);
+              const isApproved = uploaded?.status === 'approved';
+              const isPending = uploaded && !isApproved && uploaded.status !== 'rejected';
+              const isRejected = uploaded?.status === 'rejected';
+              const isExpired = uploaded?.valid_until && new Date(uploaded.valid_until) < new Date();
+
+              let statusLabel = 'Missing';
+              let statusColor = '#f87171';
+              let dotColor = 'rgba(248,113,113,0.4)';
+              if (uploaded) {
+                if (isRejected) { statusLabel = 'Rejected — re-upload'; statusColor = '#f87171'; dotColor = '#f87171'; }
+                else if (isExpired) { statusLabel = 'Expired'; statusColor = '#f87171'; dotColor = '#f87171'; }
+                else if (isPending) { statusLabel = 'Pending Review'; statusColor = '#fbbf24'; dotColor = '#fbbf24'; }
+                else if (isApproved) { statusLabel = 'Approved ✓'; statusColor = '#4ade80'; dotColor = '#4ade80'; }
+              }
+
+              return (
+                <div key={req.name} style={{
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '12px 18px',
+                  borderTop: i > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                  background: isApproved ? 'rgba(74,222,128,0.02)' : 'transparent'
+                }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: dotColor }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', color: 'white', fontWeight: '500' }}>
+                      {req.name}
+                      {req.critical && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#a78bfa', fontWeight: '700' }}>CRITICAL</span>}
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{req.why}</div>
+                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: statusColor, flexShrink: 0 }}>{statusLabel}</div>
+                  {!isApproved && (
+                    <button onClick={() => quickUpload(req.name)} style={{
+                      padding: '4px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600',
+                      background: 'rgba(56,189,248,0.1)', color: '#38bdf8',
+                      border: '1px solid rgba(56,189,248,0.2)', cursor: 'pointer', flexShrink: 0,
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {isRejected || isExpired ? 'Re-upload' : uploaded ? 'Replace' : 'Upload'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Uploaded documents table */}
       <div className="glass-card-flat overflow-hidden">
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Upload size={15} style={{ color: '#38bdf8' }} />
+          <span style={{ fontWeight: '600', color: 'white', fontSize: '14px' }}>Uploaded Documents</span>
+          <span style={{ marginLeft: '4px', fontSize: '12px', color: 'var(--text-muted)' }}>({docs.length})</span>
+        </div>
         <table className="glass-table">
           <thead><tr><th>Document</th><th>Status</th><th>Valid Until</th><th>Uploaded</th></tr></thead>
           <tbody>
@@ -388,21 +657,21 @@ export function VendorDocuments() {
                 </td>
                 <td>
                   <span className={`badge ${d.status === 'approved' ? 'badge-green' : d.status === 'rejected' ? 'badge-red' : 'badge-amber'}`}>
-                    {d.status}
+                    {d.status || 'pending'}
                   </span>
                   {d.rejection_reason && <div className="text-xs mt-1" style={{ color: '#f87171' }}>{d.rejection_reason}</div>}
                 </td>
-                <td className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                <td className="text-sm" style={{ color: d.valid_until && new Date(d.valid_until) < new Date() ? '#f87171' : 'var(--text-muted)' }}>
                   {d.valid_until ? new Date(d.valid_until).toLocaleDateString('en-IN') : '—'}
                 </td>
                 <td className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                  {new Date(d.created_at).toLocaleDateString('en-IN')}
+                  {new Date(d.created_at || d.uploaded_at).toLocaleDateString('en-IN')}
                 </td>
               </tr>
             )) : (
               <tr><td colSpan={4} className="text-center py-12" style={{ color: 'var(--text-muted)' }}>
                 <FileCheck size={36} className="mx-auto mb-3 opacity-30" />
-                No documents uploaded yet
+                No documents uploaded yet — use the checklist above to get started
               </td></tr>
             )}
           </tbody>
@@ -412,9 +681,7 @@ export function VendorDocuments() {
   );
 }
 
-// ============================================================
-// VENDOR PORTAL FINDINGS
-// ============================================================
+
 export function VendorFindings() {
   const { user } = useAuth();
   const [findings, setFindings] = useState([]);
