@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Building2, AlertTriangle, FileCheck, TrendingUp,
   LayoutDashboard, ScrollText, Download, Loader,
-  ChevronRight, RefreshCw
+  ChevronRight, RefreshCw, LogOut
 } from 'lucide-react';
 import api from '../utils/api';
 
@@ -410,6 +410,70 @@ function AuditTrailReport({ auditLogs, auditLoading }) {
   );
 }
 
+
+// ── 7. Offboarding History ────────────────────────────────────────────────────
+function OffboardingHistory({ vendors }) {
+  const offboarded = vendors.filter(v => v.status === 'offboarded');
+  const active = vendors.filter(v => v.status === 'offboarding_initiated');
+
+  const doExport = () => exportCSV('offboarding_history.csv',
+    ['Vendor', 'Category', 'Criticality', 'Last Risk Rating', 'Status', 'Last Updated'],
+    [...active, ...offboarded].map(v => [v.name, v.category?.replace(/_/g,' '), v.criticality, v.risk_rating, v.status, v.updated_at])
+  );
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader title="Offboarding History" subtitle={`${active.length} in progress · ${offboarded.length} archived`} onExport={doExport} />
+
+      {active.length > 0 && (
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#f87171' }}>In Progress</div>
+          <div className="glass-card-flat overflow-x-auto">
+            <table className="glass-table">
+              <thead><tr><th>Vendor</th><th>Category</th><th>Criticality</th><th>Last Risk Rating</th><th>Started</th></tr></thead>
+              <tbody>
+                {active.map(v => (
+                  <tr key={v.id}>
+                    <td className="font-semibold text-white text-sm">{v.name}</td>
+                    <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{v.category?.replace(/_/g,' ') || '—'}</td>
+                    <td>{v.criticality ? <Badge label={v.criticality} style={ratingBadge(v.criticality)} /> : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                    <td>{v.risk_rating ? <Badge label={`${v.risk_rating} risk`} style={ratingBadge(v.risk_rating)} /> : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{v.updated_at ? new Date(v.updated_at).toLocaleDateString('en-IN') : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#4ade80' }}>Archived</div>
+        {offboarded.length === 0 ? (
+          <div className="glass-card-flat p-10 text-center" style={{ color: 'var(--text-muted)' }}>No archived vendors yet</div>
+        ) : (
+          <div className="glass-card-flat overflow-x-auto">
+            <table className="glass-table">
+              <thead><tr><th>Vendor</th><th>Category</th><th>Criticality</th><th>Last Risk Rating</th><th>Offboarded On</th></tr></thead>
+              <tbody>
+                {offboarded.map(v => (
+                  <tr key={v.id}>
+                    <td className="font-semibold text-white text-sm">{v.name}</td>
+                    <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{v.category?.replace(/_/g,' ') || '—'}</td>
+                    <td>{v.criticality ? <Badge label={v.criticality} style={ratingBadge(v.criticality)} /> : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                    <td>{v.risk_rating ? <Badge label={`${v.risk_rating} risk`} style={ratingBadge(v.risk_rating)} /> : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{v.updated_at ? new Date(v.updated_at).toLocaleDateString('en-IN') : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Reports Page ─────────────────────────────────────────────────────────
 const REPORTS = [
   { id: 'inventory',     label: 'Vendor Inventory',    subtitle: 'Operational',      icon: Building2 },
@@ -546,6 +610,7 @@ export default function Reports() {
             {activeReport === 'due_diligence' && <DueDiligence vendors={vendors} docsByVendor={docsByVendor} docsLoading={docsLoading} />}
             {activeReport === 'board'         && <BoardSummary vendors={vendors} findingsStats={findingsStats} expiryStats={expiryStats} />}
             {activeReport === 'audit'         && <AuditTrailReport auditLogs={auditLogs} auditLoading={auditLoading} />}
+            {activeReport === 'offboarding'    && <OffboardingHistory vendors={vendors} />}
           </>
         )}
       </div>

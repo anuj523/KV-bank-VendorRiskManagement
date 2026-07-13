@@ -17,6 +17,7 @@ const navItems = [
   { path: '/workflows', label: 'Workflows', icon: GitBranch },
   { path: '/escalation', label: 'Escalation', icon: Siren },
   { path: '/renewals', label: 'Renewals', icon: RefreshCw },
+  { path: '/offboarding', label: 'Offboarding', icon: LogOut },
   { path: '/supply-chain', label: 'Supply Chain', icon: Package },
   { path: '/ai-insights', label: 'AI Insights', icon: Bot },
   { path: '/compliance', label: 'Compliance', icon: Shield },

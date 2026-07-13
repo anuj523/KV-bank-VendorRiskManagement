@@ -16,6 +16,7 @@ import AIInsights from './pages/AIInsights';
 import Escalation from './pages/Escalation';
 import Renewals from './pages/Renewals';
 import Workflows from './pages/Workflows';
+import Offboarding from './pages/Offboarding';
 import { SupplyChainPage, CompliancePage, SettingsPage } from './pages/Placeholders';
 import { VendorQuestionnaire, VendorDocuments, VendorFindings, VendorRiskScores } from './pages/VendorPortal';
 import VendorDashboard from './pages/VendorDashboard';
@@ -56,6 +57,7 @@ function AppRoutes() {
       <Route path="/ai-insights" element={<P><AIInsights /></P>} />
       <Route path="/escalation" element={<P><Escalation /></P>} />
       <Route path="/renewals" element={<P><Renewals /></P>} />
+      <Route path="/offboarding" element={<P><Offboarding /></P>} />
       <Route path="/workflows" element={<P><Workflows /></P>} />
       <Route path="/supply-chain" element={<P><SupplyChainPage /></P>} />
       <Route path="/compliance" element={<P><CompliancePage /></P>} />
