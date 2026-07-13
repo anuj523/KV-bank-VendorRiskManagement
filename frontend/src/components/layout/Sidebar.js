@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Building2, AlertTriangle, FileCheck,
   TrendingUp, Shield, RefreshCw, LogOut, Menu, X,
-  ChevronRight, Settings, Bot, Package, GitBranch, Siren
+  ChevronRight, Settings, Bot, Package, GitBranch, Siren, BarChart2
 } from 'lucide-react';
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
   { path: '/findings', label: 'Findings', icon: AlertTriangle },
   { path: '/documents', label: 'Documents', icon: FileCheck },
   { path: '/risk', label: 'Risk Assessment', icon: TrendingUp },
+  { path: '/reports', label: 'Reports', icon: BarChart2 },
   { path: '/workflows', label: 'Workflows', icon: GitBranch },
   { path: '/escalation', label: 'Escalation', icon: Siren },
   { path: '/renewals', label: 'Renewals', icon: RefreshCw },

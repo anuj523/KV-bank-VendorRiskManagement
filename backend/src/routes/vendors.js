@@ -318,4 +318,25 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// Global audit trail for Reports page
+router.get('/audit/global', auth, async (req, res) => {
+  if (req.user.type === 'vendor') return res.status(403).json({ error: 'Not authorized' });
+  try {
+    const limit = parseInt(req.query.limit) || 200;
+    const result = await query(
+      `SELECT a.*, u.full_name as user_name, u.role as user_role,
+              v.name as vendor_name, vu.full_name as vendor_user_name
+       FROM audit_trail a
+       LEFT JOIN users u ON a.user_id = u.id
+       LEFT JOIN vendors v ON a.vendor_id = v.id
+       LEFT JOIN vendor_users vu ON a.vendor_user_id = vu.id
+       ORDER BY a.created_at DESC LIMIT $1`,
+      [limit]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
 module.exports = router;

@@ -11,6 +11,7 @@ import Findings from './pages/Findings';
 import Documents from './pages/Documents';
 import RiskQuestionnaire from './pages/RiskQuestionnaire';
 import RiskOverview from './pages/RiskOverview';
+import Reports from './pages/Reports';
 import AIInsights from './pages/AIInsights';
 import Escalation from './pages/Escalation';
 import Renewals from './pages/Renewals';
@@ -51,6 +52,7 @@ function AppRoutes() {
       <Route path="/documents" element={<P><Documents /></P>} />
       <Route path="/risk" element={<P><RiskOverview /></P>} />
       <Route path="/risk/:vendorId" element={<P><RiskQuestionnaire /></P>} />
+      <Route path="/reports" element={<P><Reports /></P>} />
       <Route path="/ai-insights" element={<P><AIInsights /></P>} />
       <Route path="/escalation" element={<P><Escalation /></P>} />
       <Route path="/renewals" element={<P><Renewals /></P>} />
