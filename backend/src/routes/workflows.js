@@ -274,7 +274,7 @@ router.post('/approve/:vendorId', auth, async (req, res) => {
     if (decision === 'approved') {
       await query(
         `INSERT INTO notifications (vendor_id, type, title, message)
-         VALUES ($1, 'vendor_approved', 'Vendor Approved', 'Your vendor profile has been approved. You are now active in the KVB vendor registry.')`,
+         VALUES ($1, 'vendor_approved', 'Vendor Approved', 'Your vendor profile has been approved. You are now active in the ABC Bank vendor registry.')`,
         [req.params.vendorId]
       );
     }

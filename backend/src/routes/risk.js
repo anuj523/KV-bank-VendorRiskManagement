@@ -181,7 +181,7 @@ function buildQuestionnaire(category) {
     { key: 'company_overview_legal', domain: 'compliance_legal', text: 'Is the vendor legally incorporated and in good standing?', regulatory: false },
     { key: 'bcp_existence', domain: 'operational', text: 'Does the vendor have a documented BCP/DR plan?', regulatory: true, reg_ref: 'RBI/2021-22/117' },
     { key: 'bcp_tested', domain: 'operational', text: 'Has the BCP/DR plan been tested in the last 12 months?', regulatory: false },
-    { key: 'data_handling', domain: 'compliance_legal', text: 'Does the vendor document how KVB data is stored, transmitted, and disposed?', regulatory: true, reg_ref: 'DPDPA-2023' },
+    { key: 'data_handling', domain: 'compliance_legal', text: 'Does the vendor document how ABC Bank data is stored, transmitted, and disposed?', regulatory: true, reg_ref: 'DPDPA-2023' },
     { key: 'regulatory_penalties', domain: 'compliance_legal', text: 'Has the vendor been free from regulatory penalties in the last 3 years?', regulatory: false },
     { key: 'insurance_coverage', domain: 'financial', text: 'Does the vendor maintain professional indemnity / cyber liability insurance?', regulatory: false },
     { key: 'subcontracting_disclosed', domain: 'compliance_legal', text: 'Has the vendor disclosed all material sub-contractors?', regulatory: false },
@@ -190,13 +190,13 @@ function buildQuestionnaire(category) {
 
   const categorySpecific = {
     technology_cloud: [
-      { key: 'data_residency', domain: 'cybersecurity', text: 'Is all KVB data stored within India?', regulatory: true, reg_ref: 'RBI-DataLoc-2018' },
+      { key: 'data_residency', domain: 'cybersecurity', text: 'Is all ABC Bank data stored within India?', regulatory: true, reg_ref: 'RBI-DataLoc-2018' },
       { key: 'encryption_at_rest', domain: 'cybersecurity', text: 'Is data encrypted at rest using AES-256 or equivalent?', regulatory: false },
       { key: 'mfa_enforced', domain: 'cybersecurity', text: 'Is MFA enforced for all privileged access?', regulatory: false },
       { key: 'soc2_available', domain: 'cybersecurity', text: 'Is a SOC 2 Type II report available and current (within 12 months)?', regulatory: false },
       { key: 'pentest_annual', domain: 'cybersecurity', text: 'Has a penetration test been conducted in the last 12 months?', regulatory: false },
       { key: 'incident_response_sla', domain: 'operational', text: 'Is there a defined incident response SLA with breach notification within 24 hours?', regulatory: true, reg_ref: 'RBI/2022-23/91' },
-      { key: 'dr_rto_rpo', domain: 'operational', text: 'Are RTO/RPO targets defined and tested for KVB-related services?', regulatory: false },
+      { key: 'dr_rto_rpo', domain: 'operational', text: 'Are RTO/RPO targets defined and tested for ABC Bank-related services?', regulatory: false },
       { key: 'patch_management', domain: 'cybersecurity', text: 'Is there a documented patch management cadence (critical patches within 72 hours)?', regulatory: false },
     ],
     financial_fintech: [
@@ -208,7 +208,7 @@ function buildQuestionnaire(category) {
     outsourcing_data: [
       { key: 'employee_screening', domain: 'compliance_legal', text: 'Does the vendor conduct background verification for all staff with data access?', regulatory: false },
       { key: 'dpdpa_compliance', domain: 'compliance_legal', text: 'Is a DPDPA-compliant Data Processing Agreement in place?', regulatory: true, reg_ref: 'DPDPA-2023' },
-      { key: 'access_monitoring', domain: 'cybersecurity', text: 'Is access monitoring and logging in place for all systems with KVB data?', regulatory: false },
+      { key: 'access_monitoring', domain: 'cybersecurity', text: 'Is access monitoring and logging in place for all systems with ABC Bank data?', regulatory: false },
       { key: 'site_locations', domain: 'operational', text: 'Have all processing site locations been disclosed and are they within India?', regulatory: false },
     ],
     it_products_software: [
@@ -220,7 +220,7 @@ function buildQuestionnaire(category) {
     professional_services: [
       { key: 'conflict_of_interest', domain: 'reputational', text: 'Has the vendor declared all potential conflicts of interest?', regulatory: false },
       { key: 'confidentiality_controls', domain: 'compliance_legal', text: 'Does the vendor have documented confidentiality handling procedures?', regulatory: false },
-      { key: 'staff_qualifications', domain: 'operational', text: 'Are all staff assigned to KVB projects appropriately qualified?', regulatory: false },
+      { key: 'staff_qualifications', domain: 'operational', text: 'Are all staff assigned to ABC Bank projects appropriately qualified?', regulatory: false },
     ],
     facilities_operations: [
       { key: 'regulatory_licenses_fac', domain: 'compliance_legal', text: 'Does the vendor hold applicable licenses (FSSAI, PSARA, labour)?', regulatory: false },

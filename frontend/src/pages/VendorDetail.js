@@ -688,7 +688,7 @@ function OverviewTab({ vendor, score, onRefresh }) {
                 <span className="text-sm text-white">{s.name}</span>
                 <div className="flex gap-2">
                   <span className="badge badge-gray">{s.geography}</span>
-                  {s.has_kvb_data_access && <span className="badge badge-amber">Data Access</span>}
+                  {s.has_abc_data_access && <span className="badge badge-amber">Data Access</span>}
                   {s.data_outside_india && <span className="badge badge-red">Outside India</span>}
                 </div>
               </div>

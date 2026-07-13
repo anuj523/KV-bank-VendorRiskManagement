@@ -8,7 +8,7 @@ const router = express.Router();
 router.post('/init', async (req, res) => {
   try {
     // Check if admin already exists
-    const existing = await query('SELECT id FROM users WHERE email = $1', ['admin@kvbank.com']);
+    const existing = await query('SELECT id FROM users WHERE email = $1', ['admin@abcbank.com']);
     if (existing.rows.length > 0) {
       return res.json({ message: 'Admin already exists', status: 'ok' });
     }
@@ -16,10 +16,10 @@ router.post('/init', async (req, res) => {
     const hash = await bcrypt.hash('Admin@123', 10);
     await query(
       `INSERT INTO users (email, password_hash, full_name, role) VALUES ($1, $2, $3, $4)`,
-      ['admin@kvbank.com', hash, 'System Administrator', 'system_administrator']
+      ['admin@abcbank.com', hash, 'System Administrator', 'system_administrator']
     );
 
-    res.json({ message: 'Admin user created successfully', email: 'admin@kvbank.com', password: 'Admin@123' });
+    res.json({ message: 'Admin user created successfully', email: 'admin@abcbank.com', password: 'Admin@123' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -43,9 +43,9 @@ router.post('/reset-admin', async (req, res) => {
     const hash = await require('bcryptjs').hash('Admin@123', 10);
     await query(
       `UPDATE users SET password_hash = $1 WHERE email = $2`,
-      [hash, 'admin@kvbank.com']
+      [hash, 'admin@abcbank.com']
     );
-    res.json({ message: 'Admin password reset to Admin@123', email: 'admin@kvbank.com' });
+    res.json({ message: 'Admin password reset to Admin@123', email: 'admin@abcbank.com' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

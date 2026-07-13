@@ -15,7 +15,7 @@ async function callClaude(prompt, systemPrompt) {
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
       max_tokens: 1500,
-      system: systemPrompt || 'You are a TPRM (Third-Party Risk Management) expert assistant for Karur Vysya Bank. Be concise, precise, and actionable.',
+      system: systemPrompt || 'You are a TPRM (Third-Party Risk Management) expert assistant for ABC Bank. Be concise, precise, and actionable.',
       messages: [{ role: 'user', content: prompt }]
     })
   });
@@ -70,7 +70,7 @@ router.post('/document-summary/:documentId', auth, async (req, res) => {
     if (!doc.rows.length) return res.status(404).json({ error: 'Document not found' });
 
     const d = doc.rows[0];
-    const prompt = `You are reviewing a ${d.document_type} document submitted by vendor "${d.vendor_name}" to Karur Vysya Bank.
+    const prompt = `You are reviewing a ${d.document_type} document submitted by vendor "${d.vendor_name}" to ABC Bank.
 
 Document content (excerpt):
 ${document_text ? document_text.substring(0, 3000) : '[Document text not provided]'}
@@ -153,7 +153,7 @@ ${findings.rows.map(f => `[${f.severity.toUpperCase()}] ${f.title}\n  Domain: ${
 For each finding, provide:
 - IMMEDIATE ACTION (what vendor must do within 30 days)
 - CONTRACT CLAUSE (what to add/enforce in the vendor contract)
-- VERIFICATION (how KVB should verify the fix)
+- VERIFICATION (how ABC Bank should verify the fix)
 
 Be specific — name the exact control, standard, or clause.`;
 
@@ -220,7 +220,7 @@ router.post('/concentration-alert', auth, async (req, res) => {
       query(`SELECT s.*, v.name as vendor_name, v.criticality FROM subcontractors s JOIN vendors v ON s.vendor_id = v.id`)
     ]);
 
-    const prompt = `Analyze concentration risk in KVB's vendor portfolio:
+    const prompt = `Analyze concentration risk in ABC Bank's vendor portfolio:
 
 High Criticality Active Vendors (${vendors.rows.length}):
 ${vendors.rows.map(v => `- ${v.name} (${v.category})`).join('\n')}
