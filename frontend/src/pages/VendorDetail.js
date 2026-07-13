@@ -36,6 +36,70 @@ const DOCUMENT_TYPES = [
   'RBI Compliance Certificate', 'PCI DSS Certificate', 'Other'
 ];
 
+const CATEGORY_REQUIRED_DOCS = {
+  technology_cloud: [
+    { name: 'SOC 2 Type II Report', critical: true },
+    { name: 'ISO 27001 Certificate', critical: true },
+    { name: 'Penetration Test Report', critical: true },
+    { name: 'Business Continuity Plan', critical: true },
+    { name: 'Data Processing Agreement', critical: true },
+    { name: 'Insurance Certificate', critical: false },
+    { name: 'NDA / Confidentiality Agreement', critical: false },
+    { name: 'VAPT Report', critical: false },
+  ],
+  it_products_software: [
+    { name: 'SOC 2 Type II Report', critical: true },
+    { name: 'Penetration Test Report', critical: true },
+    { name: 'VAPT Report', critical: true },
+    { name: 'ISO 27001 Certificate', critical: true },
+    { name: 'Data Processing Agreement', critical: true },
+    { name: 'Insurance Certificate', critical: false },
+    { name: 'NDA / Confidentiality Agreement', critical: false },
+  ],
+  financial_fintech: [
+    { name: 'SOC 2 Report', critical: true },
+    { name: 'ISO 27001 Certificate', critical: true },
+    { name: 'Penetration Test Report', critical: true },
+    { name: 'Audited Financial Statements', critical: true },
+    { name: 'Insurance Certificate', critical: true },
+    { name: 'BCP / DR Plan', critical: true },
+    { name: 'Data Processing Agreement', critical: true },
+    { name: 'Regulatory Compliance Certificate', critical: true },
+    { name: 'Sanctions / Adverse Media Screening', critical: true },
+  ],
+  outsourcing_data: [
+    { name: 'Data Processing Agreement', critical: true },
+    { name: 'ISO 27001 Certificate', critical: true },
+    { name: 'SOC 2 Type II Report', critical: true },
+    { name: 'Business Continuity Plan', critical: true },
+    { name: 'Penetration Test Report', critical: true },
+    { name: 'NDA / Confidentiality Agreement', critical: true },
+    { name: 'Insurance Certificate', critical: false },
+    { name: 'RBI Compliance Certificate', critical: false },
+  ],
+  professional_services: [
+    { name: 'Insurance Certificate', critical: true },
+    { name: 'NDA / Confidentiality Agreement', critical: true },
+    { name: 'Company Registration', critical: true },
+    { name: 'Financial Statements', critical: false },
+    { name: 'Data Processing Agreement', critical: false },
+    { name: 'ISO 27001 Certificate', critical: false },
+  ],
+  facilities_operations: [
+    { name: 'Insurance Certificate', critical: true },
+    { name: 'Company Registration', critical: true },
+    { name: 'Business Continuity Plan', critical: true },
+    { name: 'Financial Statements', critical: false },
+    { name: 'NDA / Confidentiality Agreement', critical: false },
+  ],
+};
+
+const matchDoc = (docName, uploadedDocs) =>
+  uploadedDocs.find(d =>
+    d.document_type?.toLowerCase().includes(docName.toLowerCase()) ||
+    docName.toLowerCase().includes(d.document_type?.toLowerCase())
+  );
+
 function ScoreBar({ label, value }) {
   const color = value >= 80 ? '#4ade80' : value >= 50 ? '#fbbf24' : '#f87171';
   return (
@@ -130,6 +194,18 @@ function DocumentsTab({ vendor, onRefresh }) {
     }
   };
 
+  const checklist = CATEGORY_REQUIRED_DOCS[vendor.category] || [];
+  const criticalDocs = checklist.filter(d => d.critical);
+  const uploadedDocs = vendor.documents || [];
+  const validUploaded = uploadedDocs.filter(d => d.status === 'approved');
+  const validCount = criticalDocs.filter(d => matchDoc(d.name, validUploaded)).length;
+  const expiringCount = uploadedDocs.filter(d => {
+    if (!d.valid_until) return false;
+    const days = Math.ceil((new Date(d.valid_until) - new Date()) / (1000 * 60 * 60 * 24));
+    return days >= 0 && days <= 30;
+  }).length;
+  const expiredCount = uploadedDocs.filter(d => d.valid_until && new Date(d.valid_until) < new Date()).length;
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -138,6 +214,58 @@ function DocumentsTab({ vendor, onRefresh }) {
           <Upload size={15} /> Upload Document
         </button>
       </div>
+
+      {/* Due-Diligence Checklist */}
+      {checklist.length > 0 && (
+        <div className="glass-card-flat overflow-hidden">
+          <div className="p-4 border-b border-white/10 flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <FileCheck size={15} style={{ color: '#a78bfa' }} />
+              <span className="font-display font-semibold text-white text-sm">Due-Diligence Documents</span>
+            </div>
+            <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
+              <span>Required (Critical): <strong style={{ color: 'white' }}>{criticalDocs.length}</strong></span>
+              <span>Valid: <strong style={{ color: '#4ade80' }}>{validCount}</strong></span>
+              <span>Expiring: <strong style={{ color: '#fbbf24' }}>{expiringCount}</strong></span>
+              <span>Expired: <strong style={{ color: '#f87171' }}>{expiredCount}</strong></span>
+              <span>Missing: <strong style={{ color: '#f87171' }}>{criticalDocs.length - validCount}</strong></span>
+            </div>
+          </div>
+          <div className="divide-y divide-white/5">
+            {checklist.map(req => {
+              const uploaded = matchDoc(req.name, uploadedDocs);
+              const isApproved = uploaded?.status === 'approved';
+              const isExpired = uploaded?.valid_until && new Date(uploaded.valid_until) < new Date();
+              const isPending = uploaded && !isApproved && uploaded.status !== 'rejected';
+              const daysLeft = uploaded?.valid_until
+                ? Math.ceil((new Date(uploaded.valid_until) - new Date()) / (1000 * 60 * 60 * 24))
+                : null;
+
+              let statusLabel = 'Missing';
+              let statusColor = '#f87171';
+              let dotColor = 'rgba(248,113,113,0.5)';
+              if (uploaded) {
+                if (isExpired) { statusLabel = 'Expired'; statusColor = '#f87171'; dotColor = '#f87171'; }
+                else if (isPending) { statusLabel = 'Pending Review'; statusColor = '#fbbf24'; dotColor = '#fbbf24'; }
+                else if (isApproved && daysLeft !== null && daysLeft <= 30) { statusLabel = `Expiring in ${daysLeft}d`; statusColor = '#fbbf24'; dotColor = '#fbbf24'; }
+                else if (isApproved) { statusLabel = 'Valid'; statusColor = '#4ade80'; dotColor = '#4ade80'; }
+                else { statusLabel = uploaded.status || 'Uploaded'; statusColor = 'var(--text-secondary)'; dotColor = '#60a5fa'; }
+              }
+
+              return (
+                <div key={req.name} style={{ display: 'flex', alignItems: 'center', padding: '10px 16px', gap: '10px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, background: dotColor }} />
+                  <div style={{ flex: 1, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    {req.name}
+                    {req.critical && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#a78bfa', fontWeight: '700' }}>CRITICAL</span>}
+                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: statusColor }}>{statusLabel}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Document flow explanation */}
       <div className="flex items-center gap-2 text-xs overflow-x-auto pb-1">
