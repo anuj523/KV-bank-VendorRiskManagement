@@ -3,6 +3,7 @@ services:
     name: vendor-risk360-api
     env: node
     region: singapore
+    rootDir: backend
     plan: standard
     buildCommand: npm install
     startCommand: node server.js
@@ -29,6 +30,10 @@ services:
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
     pullRequestPreviewsEnabled: true
+    envVars:
+      # Paste the API service's full URL, e.g. https://vendor-risk360-api.onrender.com
+      - key: REACT_APP_API_URL
+        sync: false
     routes:
       - type: rewrite
         source: /*
@@ -37,6 +42,6 @@ services:
 databases:
   - name: vendor-risk360-db
     region: singapore
-    plan: starter
+    plan: basic-256mb
     databaseName: vendorrisk360
     user: vendorrisk360
