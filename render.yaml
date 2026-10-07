@@ -42,7 +42,7 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false           # prompted during Blueprint creation
       - key: FRONTEND_URL
-        sync: false           # e.g. https://vendor-risk360-frontend.onrender.com
+        value: https://vendor-risk360-frontend.onrender.com
 
   # ---------- Frontend (React static site, served from Render's global CDN; always free) ----------
   - type: web
@@ -55,7 +55,9 @@ services:
       - key: NODE_VERSION
         value: "20"
       - key: REACT_APP_API_URL
-        sync: false           # e.g. https://vendor-risk360-api.onrender.com (no trailing slash)
+        # Render gave the API a "-p15p" suffix because "vendor-risk360-api" was taken.
+        # Baked in at build time: redeploy the frontend after changing it.
+        value: https://vendor-risk360-api-p15p.onrender.com
     headers:
       - path: /*
         name: X-Frame-Options

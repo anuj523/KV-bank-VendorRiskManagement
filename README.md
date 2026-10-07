@@ -91,7 +91,7 @@ In Render dashboard: New → Blueprint → connect repo → Render reads `render
    - Build: `npm install && npm run build`
    - Publish: `build`
    - Add rewrite rule: `/* → /index.html`
-   - Add env: `REACT_APP_API_URL=https://vendor-risk360-api.onrender.com`
+   - Add env: `REACT_APP_API_URL=https://vendor-risk360-api-p15p.onrender.com`
 
 ### Step 3 — Environment Variables (Backend)
 
@@ -100,12 +100,12 @@ In Render dashboard: New → Blueprint → connect repo → Render reads `render
 | `DATABASE_URL` | From Render PostgreSQL → Internal Connection String |
 | `JWT_SECRET` | Any long random string (32+ chars) |
 | `ANTHROPIC_API_KEY` | From console.anthropic.com |
-| `FRONTEND_URL` | Your Render static site URL |
+| `FRONTEND_URL` | `https://vendor-risk360-frontend.onrender.com` |
 | `NODE_ENV` | `production` |
 
 ### Step 4 — Verify
 
-1. Backend health: `https://vendor-risk360-api.onrender.com/health`  
+1. Backend health: `https://vendor-risk360-api-p15p.onrender.com/health`  
    Should return `{"status":"ok"}`
 
 2. Open frontend URL → Login with `admin@kvbank.com` and the `ADMIN_PASSWORD` value from the API service's Environment tab in Render
