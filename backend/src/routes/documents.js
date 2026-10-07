@@ -7,9 +7,8 @@ const { auth, auditLog } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Use /tmp for uploads — works on Render free tier
-// NOTE: For production, swap this for AWS S3 (files persist across deploys)
-const uploadDir = '/tmp/vendor-uploads';
+// Upload dir: set UPLOAD_DIR to a persistent disk path in production (see render.yaml)
+const uploadDir = process.env.UPLOAD_DIR || '/tmp/vendor-uploads';
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({

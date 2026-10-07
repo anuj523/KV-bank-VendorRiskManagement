@@ -1,16 +1,32 @@
+# Render Blueprint — KVB Vendor Risk360 (FREE tier)
+# Region: Singapore (closest Render region to India; Render has no Mumbai region)
+# Deploy: Render Dashboard → New → Blueprint → select this repo
+#
+# Free-tier limits:
+#   - API sleeps after 15 min idle; first request after that takes ~1 min
+#   - No persistent disk: uploaded documents in /tmp are lost on sleep/redeploy
+#   - Free Postgres (1 GB) expires 30 days after creation unless upgraded
+
 services:
+  # ---------- Backend API (Node/Express) ----------
   - type: web
     name: vendor-risk360-api
-    env: node
+    runtime: node
     region: singapore
     rootDir: backend
-    plan: standard
-    buildCommand: npm install
+    plan: free
+    buildCommand: npm ci
     startCommand: node server.js
     healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "20"
+      # On a paid plan, add a disk (mountPath /var/data) and set this to /var/data/uploads
+      - key: UPLOAD_DIR
+        value: /tmp/vendor-uploads
       - key: DATABASE_URL
         fromDatabase:
           name: vendor-risk360-db
@@ -18,21 +34,29 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: ANTHROPIC_API_KEY
-        sync: false
+        sync: false           # prompted during Blueprint creation
       - key: FRONTEND_URL
-        sync: false
+        sync: false           # e.g. https://vendor-risk360-frontend.onrender.com
 
+  # ---------- Frontend (React static site, served from Render's global CDN; always free) ----------
   - type: web
     name: vendor-risk360-frontend
-    env: static
+    runtime: static
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     staticPublishPath: ./build
-    pullRequestPreviewsEnabled: true
     envVars:
-      # Paste the API service's full URL, e.g. https://vendor-risk360-api.onrender.com
+      - key: NODE_VERSION
+        value: "20"
       - key: REACT_APP_API_URL
-        sync: false
+        sync: false           # e.g. https://vendor-risk360-api.onrender.com (no trailing slash)
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
     routes:
       - type: rewrite
         source: /*
@@ -41,6 +65,8 @@ services:
 databases:
   - name: vendor-risk360-db
     region: singapore
-    plan: basic-256mb
+    plan: free
+    postgresMajorVersion: "16"
     databaseName: vendorrisk360
     user: vendorrisk360
+    ipAllowList: []           # no public access; only Render services in the same region can connect
