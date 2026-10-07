@@ -32,6 +32,31 @@ const initDb = async () => {
   } catch (err) {
     console.error('❌ DB init error:', err.message);
   }
+  await seedAdmin();
+};
+
+// Create the first admin from ADMIN_EMAIL / ADMIN_PASSWORD if no such user exists.
+// Never overwrites an existing account's password.
+const seedAdmin = async () => {
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
+  if (!email || !password) {
+    console.warn('⚠️  ADMIN_EMAIL / ADMIN_PASSWORD not set — skipping admin seed');
+    return;
+  }
+  try {
+    const bcrypt = require('bcryptjs');
+    const hash = await bcrypt.hash(password, 10);
+    const res = await pool.query(
+      `INSERT INTO users (email, password_hash, full_name, role)
+       VALUES ($1, $2, 'System Administrator', 'system_administrator')
+       ON CONFLICT (email) DO NOTHING`,
+      [email, hash]
+    );
+    if (res.rowCount) console.log(`✅ Admin user created: ${email}`);
+  } catch (err) {
+    console.error('❌ Admin seed error:', err.message);
+  }
 };
 
 module.exports = { query, pool, initDb };

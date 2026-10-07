@@ -80,7 +80,7 @@ export default function Login() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="glass-input"
-                placeholder={tab === 'vendor' ? 'vendor@company.com' : 'you@abcbank.com'}
+                placeholder={tab === 'vendor' ? 'vendor@company.com' : 'you@kvbank.com'}
                 required
               />
             </div>
@@ -127,12 +127,6 @@ export default function Login() {
               )}
             </button>
           </form>
-
-          {tab === 'internal' && (
-            <p className="text-center text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
-              Default admin: admin@abcbank.com / Admin@123
-            </p>
-          )}
         </div>
 
         <p className="text-center text-xs mt-6" style={{ color: 'var(--text-muted)' }}>

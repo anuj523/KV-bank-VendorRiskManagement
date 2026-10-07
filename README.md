@@ -49,7 +49,7 @@ npm install
 npm start
 ```
 
-Default admin login: `admin@kvbank.com` / `Admin@123`
+Admin login: `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env` (created on first start if missing)
 
 ---
 
@@ -108,7 +108,7 @@ In Render dashboard: New → Blueprint → connect repo → Render reads `render
 1. Backend health: `https://vendor-risk360-api.onrender.com/health`  
    Should return `{"status":"ok"}`
 
-2. Open frontend URL → Login with `admin@kvbank.com` / `Admin@123`
+2. Open frontend URL → Login with `admin@kvbank.com` and the `ADMIN_PASSWORD` value from the API service's Environment tab in Render
 
 3. Change the admin password immediately after first login.
 

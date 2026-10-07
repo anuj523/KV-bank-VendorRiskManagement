@@ -33,6 +33,12 @@ services:
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
+      # First admin login, created on startup if missing. Password: see the
+      # API service's Environment tab in Render.
+      - key: ADMIN_EMAIL
+        value: admin@kvbank.com
+      - key: ADMIN_PASSWORD
+        generateValue: true
       - key: ANTHROPIC_API_KEY
         sync: false           # prompted during Blueprint creation
       - key: FRONTEND_URL

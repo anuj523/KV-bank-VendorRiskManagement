@@ -221,28 +221,19 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Seed initial admin user (password: Admin@123)
-INSERT INTO users (email, password_hash, full_name, role)
-VALUES (
-  'admin@kvbank.com',
-  '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
-  'System Administrator',
-  'system_administrator'
-) ON CONFLICT (email) DO NOTHING;
-
 -- Trigger to keep updated_at current
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER vendors_updated_at BEFORE UPDATE ON vendors
+CREATE OR REPLACE TRIGGER vendors_updated_at BEFORE UPDATE ON vendors
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER users_updated_at BEFORE UPDATE ON users
+CREATE OR REPLACE TRIGGER users_updated_at BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER findings_updated_at BEFORE UPDATE ON findings
+CREATE OR REPLACE TRIGGER findings_updated_at BEFORE UPDATE ON findings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER workflows_updated_at BEFORE UPDATE ON workflows
+CREATE OR REPLACE TRIGGER workflows_updated_at BEFORE UPDATE ON workflows
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- Ensure finding_ref unique constraint exists (safe to run multiple times)
